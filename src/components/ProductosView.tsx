@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Boxes, Plus, Search, Tag, ArrowRight, ShoppingBag, Package } from 'lucide-react';
+import { Boxes, Plus, Search, Tag, ArrowRight, ShoppingBag, Package, Trash2 } from 'lucide-react';
 import { ProductItem } from '../types';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface ProductosViewProps {
   products: ProductItem[];
   onSelectProduct: (p: ProductItem) => void;
   onOpenNuevoIngreso: () => void;
   onOpenRegistrarVenta?: (product?: ProductItem) => void;
+  onDeleteProduct?: (sku: string) => void;
 }
 
 export const ProductosView: React.FC<ProductosViewProps> = ({
@@ -14,9 +16,11 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
   onSelectProduct,
   onOpenNuevoIngreso,
   onOpenRegistrarVenta,
+  onDeleteProduct,
 }) => {
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
 
   const filtered = products.filter((p) => {
     if (selectedCat !== 'all' && p.category !== selectedCat) return false;
@@ -132,9 +136,24 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
               <div>
                 <div className="flex items-center justify-between text-xs text-[#797583] mb-3">
                   <span className="font-mono text-[11px] font-semibold">{item.sku}</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#42308f] font-bold text-[10px]">
-                    {item.category}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#42308f] font-bold text-[10px]">
+                      {item.category}
+                    </span>
+                    {onDeleteProduct && (
+                      <button
+                        id={`btn-eliminar-producto-${item.sku}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProductToDelete(item);
+                        }}
+                        className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Eliminar producto del inventario"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <h3 className="font-heading font-bold text-base text-[#0b1c30] group-hover:text-[#42308f] transition-colors leading-snug">
@@ -198,6 +217,25 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             </div>
           ))}
         </div>
+      )}
+
+      {/* Modal de confirmación para eliminar producto */}
+      {productToDelete && (
+        <ConfirmDeleteModal
+          isOpen={Boolean(productToDelete)}
+          onClose={() => setProductToDelete(null)}
+          onConfirm={() => {
+            if (productToDelete && onDeleteProduct) {
+              onDeleteProduct(productToDelete.sku);
+              setProductToDelete(null);
+            }
+          }}
+          title="Eliminar Producto"
+          itemName={`${productToDelete.name} (${productToDelete.sku})`}
+          itemType="el producto del catálogo"
+          confirmText="Sí, Eliminar Producto"
+          itemDetail={`Categoría: ${productToDelete.category} | Talle: ${productToDelete.size} | Color: ${productToDelete.colorName} | Stock actual: ${productToDelete.stock} u.`}
+        />
       )}
     </div>
   );

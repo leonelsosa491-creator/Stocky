@@ -44,6 +44,7 @@ export interface CategorySummary {
 export interface StockMovement {
   id: string;
   date: string;
+  rawDate?: string;
   sku: string;
   productName: string;
   type: 'ingreso' | 'egreso' | 'ajuste';

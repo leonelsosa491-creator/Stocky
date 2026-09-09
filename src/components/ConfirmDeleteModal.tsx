@@ -7,6 +7,8 @@ interface ConfirmDeleteModalProps {
   onConfirm: () => void;
   title: string;
   itemName: string;
+  itemType?: string;
+  confirmText?: string;
   itemDetail?: string;
 }
 
@@ -16,6 +18,8 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   onConfirm,
   title,
   itemName,
+  itemType = 'el elemento',
+  confirmText,
   itemDetail,
 }) => {
   if (!isOpen) return null;
@@ -44,7 +48,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               {title}
             </h3>
             <p className="text-xs text-[#5e5d69] mt-1.5 leading-relaxed">
-              ¿Estás segura de eliminar permanentemente la promoción{' '}
+              ¿Estás segura de eliminar permanentemente {itemType}{' '}
               <span className="font-bold text-[#0b1c30]">"{itemName}"</span>?
             </p>
 
@@ -76,7 +80,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
             }}
             className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-full transition-all shadow-sm"
           >
-            Sí, Eliminar Promoción
+            {confirmText || 'Sí, Eliminar'}
           </button>
         </div>
       </div>

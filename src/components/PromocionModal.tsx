@@ -305,8 +305,8 @@ export const PromocionModal: React.FC<PromocionModalProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Discount Type & Value & Category */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Row 2: Discount Type & Value */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
                 Tipo de Beneficio
@@ -345,24 +345,6 @@ export const PromocionModal: React.FC<PromocionModalProps> = ({
                   {discountType === 'porcentaje' ? '%' : discountType === 'monto_fijo' ? 'ARS' : '2x1'}
                 </span>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                Categoría Principal
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as Promotion['category'])}
-                className="w-full text-xs px-3.5 py-2.5 bg-[#f8f9ff] border border-[#c9c4d3]/50 rounded-xl focus:border-[#42308f] focus:outline-none"
-              >
-                <option value="Todas">Todas las Categorías</option>
-                <option value="Remeras">Remeras</option>
-                <option value="Buzos">Buzos</option>
-                <option value="Pantalones">Pantalones</option>
-                <option value="Abrigos">Abrigos</option>
-                <option value="Accesorios">Accesorios</option>
-              </select>
             </div>
           </div>
 
@@ -405,7 +387,7 @@ export const PromocionModal: React.FC<PromocionModalProps> = ({
                       : 'text-[#797583] hover:text-[#0b1c30]'
                   }`}
                 >
-                  Toda la Categoría
+                  Todo el Stock
                 </button>
               </div>
             </div>
@@ -598,13 +580,12 @@ export const PromocionModal: React.FC<PromocionModalProps> = ({
             ) : (
               <div className="p-3 bg-white rounded-2xl border border-gray-100 text-xs text-[#5e5d69] space-y-2">
                 <p>
-                  Esta promoción aplicará de manera general a todas las prendas dentro de la categoría seleccionada (
-                  <strong>{category}</strong>).
+                  Esta promoción aplicará de manera general a <strong>todas las prendas del local</strong>.
                 </p>
                 <div className="flex items-center gap-2 text-[11px] text-[#797583]">
                   <Sparkles className="w-3.5 h-3.5 text-[#42308f]" />
                   <span>
-                    Consejo: Si deseas que el cajero o vendedor vea exactamente la prenda en el mostrador, selecciona la opción <strong>"Desde el Stock"</strong>.
+                    Consejo: Si deseas que el personal vea exactamente la prenda en mostrador con su precio rebajado, seleccioná la opción <strong>"Desde el Stock"</strong>.
                   </span>
                 </div>
               </div>

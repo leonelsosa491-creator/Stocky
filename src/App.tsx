@@ -733,6 +733,12 @@ export default function App() {
     showToast(`Usuario "${target?.name || userId}" eliminado.`);
   };
 
+  const handleDeleteProduct = (sku: string) => {
+    const target = products.find((p) => p.sku === sku);
+    setProducts((prev) => prev.filter((p) => p.sku !== sku));
+    showToast(`Prenda "${target?.name || sku}" eliminada del inventario.`);
+  };
+
   // ----------------------------------------------------
   // TESTING & RESET HANDLERS
   // ----------------------------------------------------
@@ -860,6 +866,7 @@ export default function App() {
               }}
               onExport={handleExport}
               onUpdateProductStock={handleUpdateProductStock}
+              onDeleteProduct={handleDeleteProduct}
             />
           )}
 
@@ -872,6 +879,7 @@ export default function App() {
               }}
               onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)}
               onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)}
+              onDeleteProduct={handleDeleteProduct}
             />
           )}
 

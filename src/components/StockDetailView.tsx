@@ -20,8 +20,10 @@ import {
   Layers,
   ShoppingBag,
   CalendarCheck,
+  Trash2,
 } from 'lucide-react';
 import { ProductItem, Promotion, CategorySummary } from '../types';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface StockDetailViewProps {
   products: ProductItem[];
@@ -38,6 +40,7 @@ interface StockDetailViewProps {
   onOpenRegistrarVenta?: (product?: ProductItem) => void;
   onOpenReserva?: (product?: ProductItem) => void;
   onEditStock: (product?: ProductItem) => void;
+  onDeleteProduct?: (sku: string) => void;
   onExport: () => void;
   onUpdateProductStock: (sku: string, newStock: number) => void;
 }
@@ -60,9 +63,13 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
   onOpenRegistrarVenta,
   onOpenReserva,
   onEditStock,
+  onDeleteProduct,
   onExport,
   onUpdateProductStock,
 }) => {
+  // Confirmation state for deleting a product
+  const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
+
   // Filter states
   const [statusFilter, setStatusFilter] = useState<'all' | 'bajo' | 'agotado' | 'ok'>(
     initialStatusFilter || 'all'
@@ -956,6 +963,19 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
+                          {onDeleteProduct && (
+                            <button
+                              id={`btn-eliminar-stock-${prod.sku}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setProductToDelete(prod);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Eliminar prenda del inventario"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -995,6 +1015,19 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           style={{ backgroundColor: prod.colorHex }}
                           title={prod.colorName}
                         />
+                        {onDeleteProduct && (
+                          <button
+                            id={`btn-eliminar-grid-${prod.sku}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProductToDelete(prod);
+                            }}
+                            className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                            title="Eliminar prenda"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1092,6 +1125,25 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal for deleting product */}
+      {productToDelete && (
+        <ConfirmDeleteModal
+          isOpen={Boolean(productToDelete)}
+          onClose={() => setProductToDelete(null)}
+          onConfirm={() => {
+            if (productToDelete && onDeleteProduct) {
+              onDeleteProduct(productToDelete.sku);
+              setProductToDelete(null);
+            }
+          }}
+          title="Eliminar Prenda"
+          itemName={`${productToDelete.name} (${productToDelete.sku})`}
+          itemType="la prenda del inventario"
+          confirmText="Sí, Eliminar Prenda"
+          itemDetail={`Categoría: ${productToDelete.category} | Talle: ${productToDelete.size} | Color: ${productToDelete.colorName} | Stock actual: ${productToDelete.stock} u.`}
+        />
+      )}
     </div>
   );
 };

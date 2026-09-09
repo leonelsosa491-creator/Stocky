@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Download,
   Plus,
@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Ban,
   ArrowDownToLine,
+  ArrowUpToLine,
   MoreVertical,
   Search,
   ArrowRight,
@@ -13,7 +14,12 @@ import {
   Sparkles,
   TrendingUp,
   Filter,
-  ShoppingBag
+  ShoppingBag,
+  Calendar,
+  Sun,
+  RotateCcw,
+  X,
+  History
 } from 'lucide-react';
 import { CategorySummary, ProductItem, StockMovement } from '../types';
 
@@ -47,31 +53,128 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
   const [categorySearch, setCategorySearch] = useState('');
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
-  // Dynamic calculations computed directly from real products inventory
-  const totalGarments = products.reduce((acc, p) => acc + p.stock, 0);
-  const totalLowStock = products.filter(
+  // Filters: Season & Date
+  const [selectedSeason, setSelectedSeason] = useState<string>('Todas');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+
+  // Date constants for quick buttons
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const yesterdayStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  // Format readable date in Spanish
+  const formatReadableDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const [year, month, day] = dateStr.split('-');
+      const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+      return date.toLocaleDateString('es-AR', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Helper to match movements to selected date
+  const matchesMovementDate = (m: StockMovement, filterDate: string) => {
+    if (!filterDate) return true;
+    if (m.rawDate && m.rawDate === filterDate) return true;
+
+    const lower = (m.date || '').toLowerCase();
+    if (filterDate === todayStr && lower.includes('hoy')) return true;
+    if (filterDate === yesterdayStr && lower.includes('ayer')) return true;
+    if (m.date && m.date.includes(filterDate)) return true;
+
+    try {
+      const parts = filterDate.split('-');
+      if (parts.length === 3) {
+        const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        const mIdx = parseInt(parts[1], 10) - 1;
+        const dayNum = parseInt(parts[2], 10);
+        if (lower.includes(`${dayNum} ${monthNames[mIdx]}`) || lower.includes(`${parts[2]} ${monthNames[mIdx]}`)) {
+          return true;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return false;
+  };
+
+  // Filter products by selected season
+  const activeProducts = useMemo(() => {
+    if (selectedSeason === 'Todas') return products;
+    return products.filter((p) => p.season.toLowerCase() === selectedSeason.toLowerCase());
+  }, [products, selectedSeason]);
+
+  // Derived categories based on activeProducts (reflects the selected season)
+  const activeCategories = useMemo(() => {
+    return categories.map((cat) => {
+      const catProds = activeProducts.filter(
+        (p) => p.category.toLowerCase() === cat.name.toLowerCase()
+      );
+      const totalItems = catProds.reduce((acc, p) => acc + p.stock, 0);
+      const lowStock = catProds.filter(
+        (p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)
+      ).length;
+      const outOfStock = catProds.filter((p) => p.status === 'agotado' || p.stock === 0).length;
+      const inStock = catProds.filter(
+        (p) => p.status === 'ok' && p.stock > p.minStockThreshold
+      ).length;
+
+      return {
+        ...cat,
+        totalItems,
+        lowStock,
+        outOfStock,
+        inStock,
+      };
+    });
+  }, [categories, activeProducts]);
+
+  // Dynamic calculations computed directly from activeProducts
+  const totalGarments = activeProducts.reduce((acc, p) => acc + p.stock, 0);
+  const totalLowStock = activeProducts.filter(
     (p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)
   ).length;
-  const totalOutOfStock = products.filter((p) => p.status === 'agotado' || p.stock === 0).length;
-  const totalInStock = products.filter(
+  const totalOutOfStock = activeProducts.filter((p) => p.status === 'agotado' || p.stock === 0).length;
+  const totalInStock = activeProducts.filter(
     (p) => p.status === 'ok' && p.stock > p.minStockThreshold
   ).length;
 
-  const totalIngresos = movements
+  // Movements filtered by date
+  const dateFilteredMovements = useMemo(() => {
+    if (!selectedDate) return movements;
+    return movements.filter((m) => matchesMovementDate(m, selectedDate));
+  }, [movements, selectedDate, todayStr, yesterdayStr]);
+
+  const totalIngresos = dateFilteredMovements
     .filter((m) => m.type === 'ingreso')
     .reduce((acc, m) => acc + Math.abs(m.quantity), 0);
 
-  const totalModels = products.length;
+  const totalEgresos = dateFilteredMovements
+    .filter((m) => m.type === 'egreso')
+    .reduce((acc, m) => acc + Math.abs(m.quantity), 0);
+
+  const totalModels = activeProducts.length;
   const percentOk = totalModels > 0 ? Math.round((totalInStock / totalModels) * 100) : 0;
   const percentBajo = totalModels > 0 ? Math.round((totalLowStock / totalModels) * 100) : 0;
   const percentAgotado = totalModels > 0 ? Math.max(0, 100 - percentOk - percentBajo) : 0;
 
-  const filteredCategories = categories.filter((c) =>
+  const filteredCategories = activeCategories.filter((c) =>
     c.name.toLowerCase().includes(categorySearch.toLowerCase())
   );
 
   // Distribution chart max reference
-  const maxCategoryCount = Math.max(...categories.map((c) => c.totalItems), 10);
+  const maxCategoryCount = Math.max(...activeCategories.map((c) => c.totalItems), 10);
 
   const getCategoryIcon = (name: string) => {
     switch (name) {
@@ -92,17 +195,22 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
     }
   };
 
+  const isAnyFilterActive = selectedSeason !== 'Todas' || selectedDate !== '';
+
   return (
     <div className="space-y-6">
       {/* Top Title Bar */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            RESUMEN
+            PANEL DE CONTROL
           </span>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Resumen
           </h1>
+          <p className="text-xs text-[#5e5d69] mt-0.5">
+            Métricas generales, salud del stock y movimientos de Melina Indumentaria.
+          </p>
         </div>
 
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
@@ -143,6 +251,211 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         </div>
       </div>
 
+      {/* FILTER TOOLBAR: DIA (CALENDARIO) & TEMPORADA */}
+      <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow space-y-3.5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Season Filter Chips */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#0b1c30] mr-1">
+              <Sun className="w-4 h-4 text-amber-500" />
+              <span>Temporada:</span>
+            </div>
+            {['Todas', 'Verano', 'Otoño', 'Invierno', 'Primavera'].map((season) => (
+              <button
+                key={season}
+                type="button"
+                onClick={() => setSelectedSeason(season)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  selectedSeason === season
+                    ? 'bg-[#42308f] text-white shadow-xs'
+                    : 'bg-[#f8f9ff] text-[#5e5d69] hover:text-[#42308f] hover:bg-[#eff4ff] border border-[#c9c4d3]/40'
+                }`}
+              >
+                {season === 'Todas' ? 'Todas' : season}
+              </button>
+            ))}
+          </div>
+
+          {/* Calendar / Day Filter */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#0b1c30]">
+              <Calendar className="w-4 h-4 text-[#42308f]" />
+              <span>Filtrar por Día:</span>
+            </div>
+
+            {/* Quick shortcuts */}
+            <div className="flex items-center gap-1 bg-[#f8f9ff] p-1 rounded-2xl border border-gray-200/70">
+              <button
+                type="button"
+                onClick={() => setSelectedDate('')}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  selectedDate === ''
+                    ? 'bg-[#42308f] text-white shadow-2xs'
+                    : 'text-[#5e5d69] hover:text-[#0b1c30]'
+                }`}
+              >
+                Histórico
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(todayStr)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  selectedDate === todayStr
+                    ? 'bg-[#42308f] text-white shadow-2xs'
+                    : 'text-[#5e5d69] hover:text-[#0b1c30]'
+                }`}
+              >
+                Hoy
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(yesterdayStr)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  selectedDate === yesterdayStr
+                    ? 'bg-[#42308f] text-white shadow-2xs'
+                    : 'text-[#5e5d69] hover:text-[#0b1c30]'
+                }`}
+              >
+                Ayer
+              </button>
+            </div>
+
+            {/* HTML5 Native Calendar Date Picker */}
+            <div className="relative flex items-center">
+              <input
+                id="resumen-date-filter"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="text-xs font-bold px-3 py-1.5 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl text-[#0b1c30] focus:border-[#42308f] focus:outline-none cursor-pointer"
+                title="Elegir una fecha específica desde el calendario"
+              />
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate('')}
+                  className="ml-1.5 p-1 text-gray-400 hover:text-rose-600 rounded-full transition-colors"
+                  title="Limpiar fecha"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {isAnyFilterActive && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSeason('Todas');
+                  setSelectedDate('');
+                }}
+                className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-colors border border-rose-200"
+                title="Restablecer filtros de temporada y fecha"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Restablecer</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Active Filters Summary Bar */}
+        {isAnyFilterActive && (
+          <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap text-xs text-[#5e5d69]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-[#0b1c30]">Filtros aplicados:</span>
+              {selectedSeason !== 'Todas' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-purple-50 border border-[#42308f]/20 text-[#42308f] font-bold text-xs">
+                  <Sun className="w-3 h-3 text-amber-500" />
+                  Temporada: {selectedSeason}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSeason('Todas')}
+                    className="hover:text-rose-600 ml-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {selectedDate && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 font-bold text-xs">
+                  <Calendar className="w-3 h-3 text-blue-600" />
+                  Día: {formatReadableDate(selectedDate)}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate('')}
+                    className="hover:text-rose-600 ml-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            <div className="text-[11px] text-[#797583]">
+              Visualizando <strong>{totalGarments} prendas</strong> ({totalModels} modelos)
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Selected Day Activity Highlight (When a day is selected via calendar) */}
+      {selectedDate && (
+        <div className="bg-gradient-to-r from-[#eff4ff] via-white to-[#fbf8ff] rounded-3xl p-5 border border-[#42308f]/20 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#42308f] text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#42308f]">
+                  ACTIVIDAD DEL DÍA
+                </span>
+                <span className="px-2 py-0.2 rounded-full bg-white text-[#42308f] border border-[#42308f]/20 text-[10px] font-extrabold">
+                  {dateFilteredMovements.length} movimientos
+                </span>
+              </div>
+              <h3 className="font-heading font-extrabold text-base text-[#0b1c30]">
+                {formatReadableDate(selectedDate)}
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+            <div>
+              <span className="text-[10px] font-bold text-emerald-700 uppercase block">
+                Ingresos
+              </span>
+              <span className="font-heading text-lg font-extrabold text-emerald-600">
+                +{totalIngresos} u.
+              </span>
+            </div>
+            <div className="h-8 w-px bg-gray-200" />
+            <div>
+              <span className="text-[10px] font-bold text-rose-700 uppercase block">
+                Egresos / Ventas
+              </span>
+              <span className="font-heading text-lg font-extrabold text-rose-600">
+                -{totalEgresos} u.
+              </span>
+            </div>
+            <div className="h-8 w-px bg-gray-200" />
+            <div>
+              <span className="text-[10px] font-bold text-[#5e5d69] uppercase block">
+                Balance Neto
+              </span>
+              <span
+                className={`font-heading text-lg font-extrabold ${
+                  totalIngresos - totalEgresos >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                }`}
+              >
+                {totalIngresos - totalEgresos > 0 ? `+${totalIngresos - totalEgresos}` : totalIngresos - totalEgresos} u.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Total de Prendas */}
@@ -160,7 +473,10 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
           </div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 mt-2">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>{products.length} modelos en {categories.length} categorías</span>
+            <span>
+              {totalModels} modelos en {activeCategories.length} categorías
+              {selectedSeason !== 'Todas' ? ` (${selectedSeason})` : ''}
+            </span>
           </div>
         </div>
 
@@ -237,14 +553,16 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <ArrowDownToLine className="w-4 h-4" />
             </div>
             <span className="text-[11px] font-bold text-[#5e5d69] tracking-wider uppercase">
-              INGRESOS DE STOCK
+              {selectedDate ? 'INGRESOS DEL DÍA' : 'INGRESOS DE STOCK'}
             </span>
           </div>
           <div className="text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             {totalIngresos.toLocaleString('es-AR')}
           </div>
           <p className="text-xs text-[#5e5d69] mt-2">
-            Prendas ingresadas registradas
+            {selectedDate
+              ? `Prendas ingresadas el ${formatReadableDate(selectedDate)}`
+              : 'Prendas ingresadas registradas'}
           </p>
         </div>
       </div>
@@ -256,7 +574,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
-                Distribución por Categoría
+                Distribución por Categoría {selectedSeason !== 'Todas' ? `(${selectedSeason})` : ''}
               </h2>
               <p className="text-xs text-[#5e5d69]">Cantidad de prendas físicas por tipo de stock</p>
             </div>
@@ -272,7 +590,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <div className="absolute inset-x-0 top-0 border-b border-dashed border-gray-100 pointer-events-none"></div>
               <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-gray-100 pointer-events-none"></div>
 
-              {categories.map((cat) => {
+              {activeCategories.map((cat) => {
                 const heightPercent = Math.max(12, Math.round((cat.totalItems / maxCategoryCount) * 100));
                 const isHovered = hoveredCategory === cat.name;
 
@@ -313,7 +631,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
 
             {/* Category Names below bars */}
             <div className="flex items-center justify-between gap-3 sm:gap-6 px-2 sm:px-6 pt-3 text-xs font-semibold text-[#5e5d69]">
-              {categories.map((cat) => (
+              {activeCategories.map((cat) => (
                 <button
                   key={cat.name}
                   onClick={() => onSelectCategory(cat.name)}
@@ -447,7 +765,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
               {filteredCategories.map((cat) => {
-                const catProducts = products.filter(
+                const catProducts = activeProducts.filter(
                   (p) => p.category.toLowerCase() === cat.name.toLowerCase()
                 );
                 const hasCritical = cat.outOfStock > 0 || cat.lowStock > 0;

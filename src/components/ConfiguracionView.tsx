@@ -20,6 +20,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { AppUser, UserRole } from '../types';
+import { loadStoreSettings, saveStoreSettings } from '../utils/storage';
 
 interface ConfiguracionViewProps {
   users: AppUser[];
@@ -43,10 +44,11 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   onRestoreTestData,
 }) => {
   const [saved, setSaved] = useState(false);
-  const [storeName, setStoreName] = useState("Aries - Melina's Indumentaria");
-  const [address, setAddress] = useState('Av. Santa Fe 1840, Buenos Aires');
-  const [minAlertStock, setMinAlertStock] = useState(15);
-  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [initialSettings] = useState(() => loadStoreSettings());
+  const [storeName, setStoreName] = useState(initialSettings.storeName);
+  const [address, setAddress] = useState(initialSettings.address);
+  const [minAlertStock, setMinAlertStock] = useState(initialSettings.minAlertStock);
+  const [emailAlerts, setEmailAlerts] = useState(initialSettings.emailAlerts);
 
   // Testing clear confirmation modal
   const [isConfirmClearModalOpen, setIsConfirmClearModalOpen] = useState(false);
@@ -60,6 +62,12 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    saveStoreSettings({
+      storeName,
+      address,
+      minAlertStock,
+      emailAlerts,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };

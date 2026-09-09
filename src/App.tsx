@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   NavScreen,
   ProductItem,
@@ -19,6 +19,13 @@ import {
   INITIAL_SUPPLIERS,
   INITIAL_USERS,
 } from './data/mockData';
+import {
+  loadInitialAppData,
+  safeSet,
+  STORAGE_KEYS,
+  clearAllStoredData,
+  restoreAllDemoData,
+} from './utils/storage';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { ResumenView } from './components/ResumenView';
@@ -47,15 +54,50 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // App data state
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
-  const [categoriesBase, setCategoriesBase] = useState<CategorySummary[]>(INITIAL_CATEGORIES);
-  const [movements, setMovements] = useState<StockMovement[]>(INITIAL_MOVEMENTS);
-  const [promotions, setPromotions] = useState<Promotion[]>(INITIAL_PROMOTIONS);
-  const [reservas, setReservas] = useState<ReservaItem[]>(INITIAL_RESERVAS);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
-  const [users, setUsers] = useState<AppUser[]>(INITIAL_USERS);
-  const [currentUser, setCurrentUser] = useState<AppUser>(INITIAL_USERS[0]);
+  // App data state loaded from persistent storage
+  const [initialData] = useState(() => loadInitialAppData());
+
+  const [products, setProducts] = useState<ProductItem[]>(() => initialData.products);
+  const [categoriesBase, setCategoriesBase] = useState<CategorySummary[]>(() => initialData.categoriesBase);
+  const [movements, setMovements] = useState<StockMovement[]>(() => initialData.movements);
+  const [promotions, setPromotions] = useState<Promotion[]>(() => initialData.promotions);
+  const [reservas, setReservas] = useState<ReservaItem[]>(() => initialData.reservas);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => initialData.suppliers);
+  const [users, setUsers] = useState<AppUser[]>(() => initialData.users);
+  const [currentUser, setCurrentUser] = useState<AppUser>(() => initialData.currentUser);
+
+  // Synchronize state changes automatically to persistent localStorage
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.PRODUCTS, products);
+  }, [products]);
+
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.CATEGORIES, categoriesBase);
+  }, [categoriesBase]);
+
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.MOVEMENTS, movements);
+  }, [movements]);
+
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.PROMOTIONS, promotions);
+  }, [promotions]);
+
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.RESERVAS, reservas);
+  }, [reservas]);
+
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.SUPPLIERS, suppliers);
+  }, [suppliers]);
+
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.USERS, users);
+  }, [users]);
+
+  useEffect(() => {
+    safeSet(STORAGE_KEYS.CURRENT_USER, currentUser);
+  }, [currentUser]);
 
   // Dynamic categories computed directly from products (100% synchronized with inventory)
   const categories: CategorySummary[] = useMemo(() => {
@@ -743,6 +785,7 @@ export default function App() {
   // TESTING & RESET HANDLERS
   // ----------------------------------------------------
   const handleClearAllTestData = () => {
+    clearAllStoredData();
     setProducts([]);
     setMovements([]);
     setReservas([]);
@@ -755,6 +798,7 @@ export default function App() {
   };
 
   const handleRestoreTestData = () => {
+    restoreAllDemoData();
     setProducts(INITIAL_PRODUCTS);
     setMovements(INITIAL_MOVEMENTS);
     setReservas(INITIAL_RESERVAS);

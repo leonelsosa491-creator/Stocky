@@ -1,0 +1,7 @@
+{
+  "name": "Aries - Melina's Indumentaria",
+  "description": "Sistema de gestión de inventario y stock para boutique Aries - Melina's Indumentaria, con resumen general, detalle de stock y control de acceso.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

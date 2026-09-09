@@ -456,6 +456,88 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         </div>
       )}
 
+      {/* Selected Day Activity List Drawer / Expandable section */}
+      {selectedDate && dateFilteredMovements.length > 0 && (
+        <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow">
+          <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#42308f]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0b1c30]">
+                Prendas y movimientos del {formatReadableDate(selectedDate)}
+              </h4>
+            </div>
+            <span className="text-xs text-[#5e5d69] font-semibold">
+              {dateFilteredMovements.length} registro{dateFilteredMovements.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="text-[11px] font-bold text-[#5e5d69] uppercase border-b border-gray-100">
+                  <th className="pb-2">Hora</th>
+                  <th className="pb-2">Tipo</th>
+                  <th className="pb-2">Prenda</th>
+                  <th className="pb-2 text-right">Cant.</th>
+                  <th className="pb-2">Destino / Proveedor</th>
+                  <th className="pb-2">Detalle</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {dateFilteredMovements.map((m) => (
+                  <tr key={m.id} className="hover:bg-[#f8f9ff]">
+                    <td className="py-2.5 pr-3 text-gray-500 font-medium whitespace-nowrap">
+                      {m.date}
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {m.type === 'ingreso' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 text-[10px]">
+                          + Ingreso
+                        </span>
+                      )}
+                      {m.type === 'egreso' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-700 text-[10px]">
+                          - Egreso
+                        </span>
+                      )}
+                      {m.type === 'ajuste' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-purple-50 text-[#42308f] text-[10px]">
+                          Ajuste
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3 font-semibold text-gray-900">
+                      {m.productName}
+                      <span className="block font-mono text-[10px] text-[#42308f] font-normal">
+                        {m.sku}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-3 text-right font-extrabold">
+                      <span
+                        className={
+                          m.quantity > 0
+                            ? 'text-emerald-600'
+                            : m.quantity < 0
+                            ? 'text-rose-600'
+                            : 'text-gray-700'
+                        }
+                      >
+                        {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-3 text-gray-700 font-medium">
+                      {m.sourceOrDestination || '-'}
+                    </td>
+                    <td className="py-2.5 text-gray-500 text-[11px]">
+                      {m.notes || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* 4 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Total de Prendas */}

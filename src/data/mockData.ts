@@ -431,6 +431,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
   {
     id: 'MOV-1092',
     date: 'Hoy, 14:32',
+    rawDate: new Date().toISOString().split('T')[0],
     sku: '#103',
     productName: 'Remera Deportiva DryFit',
     type: 'ingreso',
@@ -442,6 +443,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
   {
     id: 'MOV-1091',
     date: 'Hoy, 11:15',
+    rawDate: new Date().toISOString().split('T')[0],
     sku: '#102',
     productName: "Remera Estampada 'Sunset'",
     type: 'egreso',
@@ -453,6 +455,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
   {
     id: 'MOV-1090',
     date: 'Ayer, 18:40',
+    rawDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
     sku: '#101',
     productName: 'Remera Básica Algodón',
     type: 'ajuste',
@@ -464,6 +467,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
   {
     id: 'MOV-1089',
     date: '28 Feb, 09:20',
+    rawDate: '2025-02-28',
     sku: '#201',
     productName: 'Buzo Oversize Hoodie',
     type: 'ingreso',

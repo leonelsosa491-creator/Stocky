@@ -194,6 +194,17 @@ export default function App() {
     }
   };
 
+  // Helper to get standard date and rawDate for movements
+  const getMovementDateInfo = () => {
+    const now = new Date();
+    const rawDate = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    return {
+      date: `Hoy, ${timeStr}`,
+      rawDate,
+    };
+  };
+
   // Add stock movement & update product
   const handleAddStock = (data: {
     sku: string;
@@ -248,9 +259,11 @@ export default function App() {
     setProducts(updatedProducts);
 
     // 2. Add to movements log
+    const dateInfo = getMovementDateInfo();
     const newMovement: StockMovement = {
       id: `MOV-${Date.now().toString().slice(-4)}`,
-      date: 'Recién',
+      date: dateInfo.date,
+      rawDate: dateInfo.rawDate,
       sku: data.sku,
       productName: data.productName,
       type: 'ingreso',
@@ -273,9 +286,11 @@ export default function App() {
     const original = products.find((p) => p.sku === updated.sku);
     if (original && original.stock !== updated.stock) {
       const diff = updated.stock - original.stock;
+      const dateInfo = getMovementDateInfo();
       const newMovement: StockMovement = {
         id: `MOV-${Date.now().toString().slice(-4)}`,
-        date: 'Recién',
+        date: dateInfo.date,
+        rawDate: dateInfo.rawDate,
         sku: updated.sku,
         productName: updated.name,
         type: 'ajuste',
@@ -373,9 +388,11 @@ export default function App() {
     setCategoriesBase((prev) => [...prev, newCat]);
     if (initialProduct) {
       setProducts((prev) => [initialProduct, ...prev]);
+      const dateInfo = getMovementDateInfo();
       const newMovement: StockMovement = {
         id: `MOV-${Date.now().toString().slice(-4)}`,
-        date: 'Recién',
+        date: dateInfo.date,
+        rawDate: dateInfo.rawDate,
         sku: initialProduct.sku,
         productName: initialProduct.name,
         type: 'ingreso',
@@ -439,9 +456,11 @@ export default function App() {
       })
     );
 
+    const dateInfo = getMovementDateInfo();
     const newMovement: StockMovement = {
       id: `MOV-${Date.now().toString().slice(-4)}`,
-      date: 'Recién',
+      date: dateInfo.date,
+      rawDate: dateInfo.rawDate,
       sku: data.sku,
       productName: data.productName,
       type: 'ingreso',
@@ -460,9 +479,11 @@ export default function App() {
     const totalQty = batch.reduce((sum, p) => sum + p.stock, 0);
     const firstCat = batch[0].category;
 
+    const dateInfo = getMovementDateInfo();
     const newMovement: StockMovement = {
       id: `MOV-${Date.now().toString().slice(-4)}`,
-      date: 'Recién',
+      date: dateInfo.date,
+      rawDate: dateInfo.rawDate,
       sku: batch.map((b) => b.sku).join(', '),
       productName: `${batch[0].name.split('(')[0].trim()} (Curva ${batch.length} talles)`,
       type: 'ingreso',
@@ -501,9 +522,11 @@ export default function App() {
       showToast(`Prenda "${prod.name}" (${prod.sku}) actualizada`);
     } else {
       setProducts((prev) => [prod, ...prev]);
+      const dateInfo = getMovementDateInfo();
       const newMovement: StockMovement = {
         id: `MOV-${Date.now().toString().slice(-4)}`,
-        date: 'Recién',
+        date: dateInfo.date,
+        rawDate: dateInfo.rawDate,
         sku: prod.sku,
         productName: prod.name,
         type: 'ingreso',
@@ -565,12 +588,12 @@ export default function App() {
     setProducts(updatedProducts);
 
     // 2. Generate stock movements for each sold product under Melina Gomez
-    const now = new Date();
-    const formattedDate = `Hoy, ${now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+    const dateInfo = getMovementDateInfo();
 
     const newMovements: StockMovement[] = saleData.items.map((item, idx) => ({
       id: `MOV-VTA-${Date.now().toString().slice(-4)}-${idx}`,
-      date: formattedDate,
+      date: dateInfo.date,
+      rawDate: dateInfo.rawDate,
       sku: item.sku,
       productName: item.productName,
       type: 'egreso',
@@ -614,11 +637,11 @@ export default function App() {
     );
 
     // Registrar ingreso por seña en movimientos
-    const now = new Date();
-    const formattedDate = `Hoy, ${now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+    const dateInfo = getMovementDateInfo();
     const newMov: StockMovement = {
       id: `MOV-RES-${Date.now().toString().slice(-4)}`,
-      date: formattedDate,
+      date: dateInfo.date,
+      rawDate: dateInfo.rawDate,
       sku: reservaData.garmentSku,
       productName: reservaData.garmentName,
       type: 'egreso',

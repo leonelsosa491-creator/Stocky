@@ -7,19 +7,24 @@ import {
   Ban,
   ArrowDownToLine,
   ArrowUpToLine,
-  MoreVertical,
   Search,
   ArrowRight,
   Shirt,
   Sparkles,
   TrendingUp,
+  TrendingDown,
   Filter,
   ShoppingBag,
   Calendar,
   Sun,
   RotateCcw,
   X,
-  History
+  CheckCircle2,
+  Activity,
+  Layers,
+  ShieldAlert,
+  Inbox,
+  AlertCircle
 } from 'lucide-react';
 import { CategorySummary, ProductItem, StockMovement } from '../types';
 
@@ -109,13 +114,18 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
     return false;
   };
 
-  // Filter products by selected season
+  // 1. FILTER PRODUCTS BY SELECTED SEASON
   const activeProducts = useMemo(() => {
     if (selectedSeason === 'Todas') return products;
-    return products.filter((p) => p.season.toLowerCase() === selectedSeason.toLowerCase());
+    return products.filter((p) => (p.season || '').toLowerCase() === selectedSeason.toLowerCase());
   }, [products, selectedSeason]);
 
-  // Derived categories based on activeProducts (reflects the selected season)
+  // Set of active SKUs for the selected season to filter movements reactively
+  const activeProductSkus = useMemo(() => {
+    return new Set(activeProducts.map((p) => p.sku));
+  }, [activeProducts]);
+
+  // 2. DERIVED CATEGORIES (Recalculated dynamically based on activeProducts)
   const activeCategories = useMemo(() => {
     return categories.map((cat) => {
       const catProds = activeProducts.filter(
@@ -130,51 +140,120 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         (p) => p.status === 'ok' && p.stock > p.minStockThreshold
       ).length;
 
+      // Real physical units breakdown for stacked bars
+      const okUnits = catProds
+        .filter((p) => p.status === 'ok' && p.stock > p.minStockThreshold)
+        .reduce((acc, p) => acc + p.stock, 0);
+
+      const lowUnits = catProds
+        .filter((p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold))
+        .reduce((acc, p) => acc + p.stock, 0);
+
       return {
         ...cat,
         totalItems,
         lowStock,
         outOfStock,
         inStock,
+        okUnits,
+        lowUnits,
+        modelsCount: catProds.length,
       };
     });
   }, [categories, activeProducts]);
 
-  // Dynamic calculations computed directly from activeProducts
-  const totalGarments = activeProducts.reduce((acc, p) => acc + p.stock, 0);
-  const totalLowStock = activeProducts.filter(
-    (p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)
-  ).length;
-  const totalOutOfStock = activeProducts.filter((p) => p.status === 'agotado' || p.stock === 0).length;
-  const totalInStock = activeProducts.filter(
-    (p) => p.status === 'ok' && p.stock > p.minStockThreshold
-  ).length;
+  // Dynamic physical stock calculations computed directly from activeProducts
+  const totalGarments = useMemo(() => {
+    return activeProducts.reduce((acc, p) => acc + p.stock, 0);
+  }, [activeProducts]);
 
-  // Movements filtered by date
-  const dateFilteredMovements = useMemo(() => {
-    if (!selectedDate) return movements;
-    return movements.filter((m) => matchesMovementDate(m, selectedDate));
-  }, [movements, selectedDate, todayStr, yesterdayStr]);
+  const totalLowStock = useMemo(() => {
+    return activeProducts.filter(
+      (p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)
+    ).length;
+  }, [activeProducts]);
 
-  const totalIngresos = dateFilteredMovements
-    .filter((m) => m.type === 'ingreso')
-    .reduce((acc, m) => acc + Math.abs(m.quantity), 0);
+  const totalOutOfStock = useMemo(() => {
+    return activeProducts.filter((p) => p.status === 'agotado' || p.stock === 0).length;
+  }, [activeProducts]);
 
-  const totalEgresos = dateFilteredMovements
-    .filter((m) => m.type === 'egreso')
-    .reduce((acc, m) => acc + Math.abs(m.quantity), 0);
+  const totalInStock = useMemo(() => {
+    return activeProducts.filter(
+      (p) => p.status === 'ok' && p.stock > p.minStockThreshold
+    ).length;
+  }, [activeProducts]);
+
+  const outOfStockProducts = useMemo(() => {
+    return activeProducts.filter((p) => p.status === 'agotado' || p.stock === 0);
+  }, [activeProducts]);
+
+  const lowStockProducts = useMemo(() => {
+    return activeProducts.filter(
+      (p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)
+    );
+  }, [activeProducts]);
+
+  // 3. MOVEMENTS FILTERED BY BOTH DATE AND SEASON
+  const dateAndSeasonFilteredMovements = useMemo(() => {
+    return movements.filter((m) => {
+      // Date filter
+      if (selectedDate && !matchesMovementDate(m, selectedDate)) return false;
+      // Season filter: if season is not 'Todas', only include movements for active SKUs
+      if (selectedSeason !== 'Todas' && !activeProductSkus.has(m.sku)) return false;
+      return true;
+    });
+  }, [movements, selectedDate, selectedSeason, activeProductSkus, todayStr, yesterdayStr]);
+
+  const totalIngresos = useMemo(() => {
+    return dateAndSeasonFilteredMovements
+      .filter((m) => m.type === 'ingreso')
+      .reduce((acc, m) => acc + Math.abs(m.quantity), 0);
+  }, [dateAndSeasonFilteredMovements]);
+
+  const totalEgresos = useMemo(() => {
+    return dateAndSeasonFilteredMovements
+      .filter((m) => m.type === 'egreso')
+      .reduce((acc, m) => acc + Math.abs(m.quantity), 0);
+  }, [dateAndSeasonFilteredMovements]);
 
   const totalModels = activeProducts.length;
   const percentOk = totalModels > 0 ? Math.round((totalInStock / totalModels) * 100) : 0;
   const percentBajo = totalModels > 0 ? Math.round((totalLowStock / totalModels) * 100) : 0;
   const percentAgotado = totalModels > 0 ? Math.max(0, 100 - percentOk - percentBajo) : 0;
 
-  const filteredCategories = activeCategories.filter((c) =>
-    c.name.toLowerCase().includes(categorySearch.toLowerCase())
-  );
+  // Donut SVG circumference calculation
+  const donutRadius = 38;
+  const donutCircumference = 2 * Math.PI * donutRadius; // ~238.76
+  const okStroke = (percentOk / 100) * donutCircumference;
+  const bajoStroke = (percentBajo / 100) * donutCircumference;
+  const agotadoStroke = (percentAgotado / 100) * donutCircumference;
 
-  // Distribution chart max reference
-  const maxCategoryCount = Math.max(...activeCategories.map((c) => c.totalItems), 10);
+  // Stock Flow comparison metrics
+  const maxFlow = Math.max(totalIngresos, totalEgresos, 1);
+  const flowBalance = totalIngresos - totalEgresos;
+  const isDepleting = totalEgresos > totalIngresos;
+  const hasFlowActivity = totalIngresos > 0 || totalEgresos > 0;
+
+  // Filtered categories for table search
+  const filteredCategories = useMemo(() => {
+    return activeCategories.filter((c) =>
+      c.name.toLowerCase().includes(categorySearch.toLowerCase())
+    );
+  }, [activeCategories, categorySearch]);
+
+  // Stacked Bar Chart max items calculation
+  const maxCategoryUnits = useMemo(() => {
+    return Math.max(...activeCategories.map((c) => c.totalItems), 10);
+  }, [activeCategories]);
+
+  // Category with highest critical risk
+  const mostCriticalCategory = useMemo(() => {
+    if (activeCategories.length === 0) return null;
+    return [...activeCategories].sort((a, b) => {
+      if (b.outOfStock !== a.outOfStock) return b.outOfStock - a.outOfStock;
+      return b.lowStock - a.lowStock;
+    })[0];
+  }, [activeCategories]);
 
   const getCategoryIcon = (name: string) => {
     switch (name) {
@@ -203,20 +282,20 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            PANEL DE CONTROL
+            PANEL DE INVENTARIO FÍSICO
           </span>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
-            Resumen
+            Resumen de Stock
           </h1>
           <p className="text-xs text-[#5e5d69] mt-0.5">
-            Métricas generales, salud del stock y movimientos de Melina Indumentaria.
+            Control de prendas disponibles, alertas de reposición y flujo de mercadería.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
           <button
             onClick={onExport}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             Exportar
@@ -224,7 +303,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
           {onOpenCrearStock && (
             <button
               onClick={onOpenCrearStock}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-[#42308f]/40 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-[#42308f]/40 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Crear Stock
@@ -234,7 +313,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
             <button
               id="btn-resumen-registrar-venta"
               onClick={onOpenRegistrarVenta}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-full text-xs font-bold text-white transition-all shadow-sm active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-full text-xs font-bold text-white transition-all shadow-sm active:scale-95 cursor-pointer"
               title="Registrar venta y descontar stock"
             >
               <ShoppingBag className="w-4 h-4" />
@@ -243,7 +322,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
           )}
           <button
             onClick={onOpenNuevoIngreso}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Nuevo Ingreso
@@ -251,7 +330,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         </div>
       </div>
 
-      {/* FILTER TOOLBAR: DIA (CALENDARIO) & TEMPORADA */}
+      {/* FILTER TOOLBAR: TEMPORADA & DÍA (REACTIVO EN TIEMPO REAL) */}
       <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow space-y-3.5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Season Filter Chips */}
@@ -265,7 +344,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                 key={season}
                 type="button"
                 onClick={() => setSelectedSeason(season)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   selectedSeason === season
                     ? 'bg-[#42308f] text-white shadow-xs'
                     : 'bg-[#f8f9ff] text-[#5e5d69] hover:text-[#42308f] hover:bg-[#eff4ff] border border-[#c9c4d3]/40'
@@ -288,7 +367,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDate('')}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   selectedDate === ''
                     ? 'bg-[#42308f] text-white shadow-2xs'
                     : 'text-[#5e5d69] hover:text-[#0b1c30]'
@@ -299,7 +378,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDate(todayStr)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   selectedDate === todayStr
                     ? 'bg-[#42308f] text-white shadow-2xs'
                     : 'text-[#5e5d69] hover:text-[#0b1c30]'
@@ -310,7 +389,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDate(yesterdayStr)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   selectedDate === yesterdayStr
                     ? 'bg-[#42308f] text-white shadow-2xs'
                     : 'text-[#5e5d69] hover:text-[#0b1c30]'
@@ -334,8 +413,8 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedDate('')}
-                  className="ml-1.5 p-1 text-gray-400 hover:text-rose-600 rounded-full transition-colors"
-                  title="Limpiar fecha"
+                  className="ml-1.5 p-1 text-gray-400 hover:text-rose-600 rounded-full transition-colors cursor-pointer"
+                  title="Limpiar filtro de fecha"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -349,7 +428,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                   setSelectedSeason('Todas');
                   setSelectedDate('');
                 }}
-                className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-colors border border-rose-200"
+                className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-colors border border-rose-200 cursor-pointer"
                 title="Restablecer filtros de temporada y fecha"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -363,7 +442,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         {isAnyFilterActive && (
           <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap text-xs text-[#5e5d69]">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-[#0b1c30]">Filtros aplicados:</span>
+              <span className="font-bold text-[#0b1c30]">Filtros activos:</span>
               {selectedSeason !== 'Todas' && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-purple-50 border border-[#42308f]/20 text-[#42308f] font-bold text-xs">
                   <Sun className="w-3 h-3 text-amber-500" />
@@ -371,7 +450,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedSeason('Todas')}
-                    className="hover:text-rose-600 ml-0.5"
+                    className="hover:text-rose-600 ml-0.5 cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -384,7 +463,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedDate('')}
-                    className="hover:text-rose-600 ml-0.5"
+                    className="hover:text-rose-600 ml-0.5 cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -393,581 +472,1001 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
             </div>
 
             <div className="text-[11px] text-[#797583]">
-              Visualizando <strong>{totalGarments} prendas</strong> ({totalModels} modelos)
+              Mostrando <strong>{totalGarments} prendas físicas</strong> ({totalModels} modelos)
             </div>
           </div>
         )}
       </div>
 
-      {/* Selected Day Activity Highlight (When a day is selected via calendar) */}
-      {selectedDate && (
-        <div className="bg-gradient-to-r from-[#eff4ff] via-white to-[#fbf8ff] rounded-3xl p-5 border border-[#42308f]/20 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#42308f] text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#42308f]">
-                  ACTIVIDAD DEL DÍA
-                </span>
-                <span className="px-2 py-0.2 rounded-full bg-white text-[#42308f] border border-[#42308f]/20 text-[10px] font-extrabold">
-                  {dateFilteredMovements.length} movimientos
-                </span>
-              </div>
-              <h3 className="font-heading font-extrabold text-base text-[#0b1c30]">
-                {formatReadableDate(selectedDate)}
-              </h3>
-            </div>
+      {/* GLOBAL EMPTY STATE (If selected season has 0 products) */}
+      {totalModels === 0 ? (
+        <div className="bg-white rounded-3xl p-12 border border-[#c9c4d3]/40 card-shadow text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
+            <Inbox className="w-7 h-7" />
           </div>
-
-          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-            <div>
-              <span className="text-[10px] font-bold text-emerald-700 uppercase block">
-                Ingresos
-              </span>
-              <span className="font-heading text-lg font-extrabold text-emerald-600">
-                +{totalIngresos} u.
-              </span>
-            </div>
-            <div className="h-8 w-px bg-gray-200" />
-            <div>
-              <span className="text-[10px] font-bold text-rose-700 uppercase block">
-                Egresos / Ventas
-              </span>
-              <span className="font-heading text-lg font-extrabold text-rose-600">
-                -{totalEgresos} u.
-              </span>
-            </div>
-            <div className="h-8 w-px bg-gray-200" />
-            <div>
-              <span className="text-[10px] font-bold text-[#5e5d69] uppercase block">
-                Balance Neto
-              </span>
-              <span
-                className={`font-heading text-lg font-extrabold ${
-                  totalIngresos - totalEgresos >= 0 ? 'text-emerald-700' : 'text-rose-700'
-                }`}
-              >
-                {totalIngresos - totalEgresos > 0 ? `+${totalIngresos - totalEgresos}` : totalIngresos - totalEgresos} u.
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Selected Day Activity List Drawer / Expandable section */}
-      {selectedDate && dateFilteredMovements.length > 0 && (
-        <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow">
-          <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#42308f]" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0b1c30]">
-                Prendas y movimientos del {formatReadableDate(selectedDate)}
-              </h4>
-            </div>
-            <span className="text-xs text-[#5e5d69] font-semibold">
-              {dateFilteredMovements.length} registro{dateFilteredMovements.length > 1 ? 's' : ''}
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="text-[11px] font-bold text-[#5e5d69] uppercase border-b border-gray-100">
-                  <th className="pb-2">Hora</th>
-                  <th className="pb-2">Tipo</th>
-                  <th className="pb-2">Prenda</th>
-                  <th className="pb-2 text-right">Cant.</th>
-                  <th className="pb-2">Destino / Proveedor</th>
-                  <th className="pb-2">Detalle</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {dateFilteredMovements.map((m) => (
-                  <tr key={m.id} className="hover:bg-[#f8f9ff]">
-                    <td className="py-2.5 pr-3 text-gray-500 font-medium whitespace-nowrap">
-                      {m.date}
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      {m.type === 'ingreso' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 text-[10px]">
-                          + Ingreso
-                        </span>
-                      )}
-                      {m.type === 'egreso' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-700 text-[10px]">
-                          - Egreso
-                        </span>
-                      )}
-                      {m.type === 'ajuste' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-purple-50 text-[#42308f] text-[10px]">
-                          Ajuste
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 pr-3 font-semibold text-gray-900">
-                      {m.productName}
-                      <span className="block font-mono text-[10px] text-[#42308f] font-normal">
-                        {m.sku}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-3 text-right font-extrabold">
-                      <span
-                        className={
-                          m.quantity > 0
-                            ? 'text-emerald-600'
-                            : m.quantity < 0
-                            ? 'text-rose-600'
-                            : 'text-gray-700'
-                        }
-                      >
-                        {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-3 text-gray-700 font-medium">
-                      {m.sourceOrDestination || '-'}
-                    </td>
-                    <td className="py-2.5 text-gray-500 text-[11px]">
-                      {m.notes || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* 4 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Card 1: Total de Prendas */}
-        <div className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow relative overflow-hidden group hover:border-[#42308f]/30 transition-all">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
-              <Package className="w-4 h-4" />
-            </div>
-            <span className="text-[11px] font-bold text-[#5e5d69] tracking-wider uppercase">
-              TOTAL DE PRENDAS
-            </span>
-          </div>
-          <div className="text-3xl font-extrabold text-[#0b1c30] tracking-tight">
-            {totalGarments.toLocaleString('es-AR')}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 mt-2">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>
-              {totalModels} modelos en {activeCategories.length} categorías
-              {selectedSeason !== 'Todas' ? ` (${selectedSeason})` : ''}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: Stock Bajo */}
-        <div
-          id="card-resumen-stock-bajo"
-          onClick={onNavigateToLowStock}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onNavigateToLowStock?.();
-            }
-          }}
-          className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow relative overflow-hidden group hover:border-amber-400 hover:shadow-lg transition-all cursor-pointer select-none text-left active:scale-[0.99]"
-          title="Hacer clic para ver en la pestaña Stock las prendas con stock bajo"
-        >
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-            <span className="text-[11px] font-bold text-[#5e5d69] tracking-wider uppercase group-hover:text-amber-700 transition-colors">
-              STOCK BAJO
-            </span>
-          </div>
-          <div className="text-3xl font-extrabold text-[#0b1c30] tracking-tight group-hover:text-amber-600 transition-colors">
-            {totalLowStock}
-          </div>
-          <div className="mt-2">
-            <p className="text-xs text-[#5e5d69] group-hover:text-amber-900 transition-colors">
-              {totalLowStock === 1 ? '1 modelo con stock crítico' : `${totalLowStock} modelos con stock crítico`}
+          <div>
+            <h3 className="font-heading text-lg font-bold text-[#0b1c30]">
+              No hay prendas registradas para la temporada &quot;{selectedSeason}&quot;
+            </h3>
+            <p className="text-xs text-[#5e5d69] max-w-md mx-auto mt-1">
+              No se encontraron modelos ni prendas asignadas a esta temporada en tu catálogo. Puedes elegir otra temporada o ver el inventario completo.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setSelectedSeason('Todas')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Ver Todas las Temporadas</span>
+          </button>
         </div>
-
-        {/* Card 3: Sin Stock */}
-        <div
-          id="card-resumen-sin-stock"
-          onClick={onNavigateToOutOfStock || onNavigateToLowStock}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              (onNavigateToOutOfStock || onNavigateToLowStock)?.();
-            }
-          }}
-          className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow relative overflow-hidden group hover:border-rose-400 hover:shadow-lg transition-all cursor-pointer select-none text-left active:scale-[0.99]"
-          title="Hacer clic para ver en la pestaña Stock los artículos sin stock"
-        >
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-rose-50 text-[#ba1a1a] flex items-center justify-center group-hover:bg-rose-100 transition-colors">
-              <Ban className="w-4 h-4" />
-            </div>
-            <span className="text-[11px] font-bold text-[#5e5d69] tracking-wider uppercase group-hover:text-rose-700 transition-colors">
-              SIN STOCK
-            </span>
-          </div>
-          <div className="text-3xl font-extrabold text-[#0b1c30] tracking-tight group-hover:text-[#ba1a1a] transition-colors">
-            {totalOutOfStock}
-          </div>
-          <div className="mt-2">
-            <p className="text-xs text-[#5e5d69] group-hover:text-rose-900 transition-colors">
-              {totalOutOfStock === 1 ? '1 modelo agotado (0 un.)' : `${totalOutOfStock} modelos agotados (0 un.)`}
-            </p>
-          </div>
-        </div>
-
-        {/* Card 4: Ingresos de Stock */}
-        <div className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow relative overflow-hidden group hover:border-emerald-300 transition-all">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <ArrowDownToLine className="w-4 h-4" />
-            </div>
-            <span className="text-[11px] font-bold text-[#5e5d69] tracking-wider uppercase">
-              {selectedDate ? 'INGRESOS DEL DÍA' : 'INGRESOS DE STOCK'}
-            </span>
-          </div>
-          <div className="text-3xl font-extrabold text-[#0b1c30] tracking-tight">
-            {totalIngresos.toLocaleString('es-AR')}
-          </div>
-          <p className="text-xs text-[#5e5d69] mt-2">
-            {selectedDate
-              ? `Prendas ingresadas el ${formatReadableDate(selectedDate)}`
-              : 'Prendas ingresadas registradas'}
-          </p>
-        </div>
-      </div>
-
-      {/* Middle Row: Distribución por Categoría + Estado del Stock */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Distribución por Categoría (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
-                Distribución por Categoría {selectedSeason !== 'Todas' ? `(${selectedSeason})` : ''}
-              </h2>
-              <p className="text-xs text-[#5e5d69]">Cantidad de prendas físicas por tipo de stock</p>
-            </div>
-            <button className="text-[#797583] hover:text-[#42308f] p-1 rounded-full">
-              <MoreVertical className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Interactive Visual Bar Chart */}
-          <div className="pt-6 pb-2">
-            <div className="h-44 flex items-end justify-between gap-3 sm:gap-6 px-2 sm:px-6 border-b border-gray-100 relative">
-              {/* Background Guideline Lines */}
-              <div className="absolute inset-x-0 top-0 border-b border-dashed border-gray-100 pointer-events-none"></div>
-              <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-gray-100 pointer-events-none"></div>
-
-              {activeCategories.map((cat) => {
-                const heightPercent = Math.max(12, Math.round((cat.totalItems / maxCategoryCount) * 100));
-                const isHovered = hoveredCategory === cat.name;
-
-                return (
-                  <div
-                    key={cat.name}
-                    onMouseEnter={() => setHoveredCategory(cat.name)}
-                    onMouseLeave={() => setHoveredCategory(null)}
-                    onClick={() => onSelectCategory(cat.name)}
-                    className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer"
-                  >
-                    {/* Tooltip value */}
-                    <div
-                      className={`text-xs font-bold mb-1 transition-all ${
-                        isHovered ? 'text-[#42308f] scale-110' : 'text-[#797583]'
-                      }`}
-                    >
-                      {cat.totalItems} un.
+      ) : (
+        <>
+          {/* ======================================================== */}
+          {/* 1. ZONA SUPERIOR: MINI-GRÁFICOS CENTRADOS EN STOCK FÍSICO */}
+          {/* ======================================================== */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            
+            {/* PANEL 1: GRÁFICO TIPO ANILLO (DONUT) - SALUD DEL INVENTARIO */}
+            <div className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow flex flex-col justify-between hover:border-[#42308f]/30 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                      <Activity className="w-4 h-4" />
                     </div>
-
-                    {/* Bar graphic */}
-                    <div className="w-full max-w-[48px] bg-[#eff4ff] rounded-t-xl overflow-hidden relative transition-all duration-300 group-hover:bg-[#d2c8ff]/50"
-                         style={{ height: `${heightPercent}%` }}>
-                      <div
-                        className={`w-full h-full transition-all duration-300 rounded-t-xl ${
-                          cat.outOfStock > 0
-                            ? 'bg-gradient-to-t from-[#5a49a8] to-rose-500/80'
-                            : cat.lowStock > 0
-                            ? 'bg-gradient-to-t from-[#42308f] to-amber-500/80'
-                            : 'bg-gradient-to-t from-[#42308f] to-[#7967c7]'
-                        } opacity-90 group-hover:opacity-100`}
-                      />
+                    <div>
+                      <h3 className="font-heading text-sm font-extrabold text-[#0b1c30]">
+                        Salud del Inventario
+                      </h3>
+                      <span className="text-[11px] text-[#5e5d69]">
+                        {selectedSeason !== 'Todas' ? `Catálogo de ${selectedSeason}` : 'Radiografía general de modelos'}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Category Names below bars */}
-            <div className="flex items-center justify-between gap-3 sm:gap-6 px-2 sm:px-6 pt-3 text-xs font-semibold text-[#5e5d69]">
-              {activeCategories.map((cat) => (
-                <button
-                  key={cat.name}
-                  onClick={() => onSelectCategory(cat.name)}
-                  className="flex-1 text-center hover:text-[#42308f] transition-colors truncate"
-                  title={cat.name}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Estado del Stock (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow flex flex-col justify-between">
-          <div className="mb-4">
-            <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
-              Estado del Stock
-            </h2>
-            <p className="text-xs text-[#5e5d69]">Salud del inventario en {totalModels} modelos</p>
-          </div>
-
-          <div className="space-y-5 my-auto">
-            {/* Óptimo */}
-            <div>
-              <div className="flex justify-between items-center text-sm font-semibold mb-2">
-                <div className="flex items-center gap-2 text-[#0b1c30]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                  <span>Óptimo</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#f8f9ff] border border-gray-200 text-[10px] font-bold text-[#42308f]">
+                    {totalModels} modelos
+                  </span>
                 </div>
-                <span className="text-emerald-600 font-bold">{percentOk}% ({totalInStock} modelos)</span>
-              </div>
-              <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${percentOk}%` }}></div>
-              </div>
-            </div>
 
-            {/* Bajo */}
-            <div
-              onClick={onNavigateToLowStock}
-              role="button"
-              className="cursor-pointer group p-2 -mx-2 rounded-xl hover:bg-amber-50/70 transition-all text-left"
-              title="Click para ver artículos con stock bajo"
-            >
-              <div className="flex justify-between items-center text-sm font-semibold mb-2">
-                <div className="flex items-center gap-2 text-[#0b1c30] group-hover:text-amber-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                  <span>Bajo</span>
+                {/* Donut Chart & Legend Visual Row */}
+                <div className="flex items-center gap-5 pt-2 pb-1">
+                  {/* Donut SVG */}
+                  <div className="relative w-28 h-28 shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                      {/* Background Track */}
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r={donutRadius}
+                        className="stroke-gray-100"
+                        strokeWidth="10"
+                        fill="transparent"
+                      />
+                      {/* Segment 1: Óptimo (Emerald) */}
+                      {percentOk > 0 && (
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r={donutRadius}
+                          stroke="#10b981"
+                          strokeWidth="10"
+                          fill="transparent"
+                          strokeDasharray={`${okStroke} ${donutCircumference}`}
+                          strokeDashoffset="0"
+                          strokeLinecap="round"
+                          className="transition-all duration-700"
+                        />
+                      )}
+                      {/* Segment 2: Bajo (Amber / Orange) */}
+                      {percentBajo > 0 && (
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r={donutRadius}
+                          stroke="#f59e0b"
+                          strokeWidth="10"
+                          fill="transparent"
+                          strokeDasharray={`${bajoStroke} ${donutCircumference}`}
+                          strokeDashoffset={`-${okStroke}`}
+                          strokeLinecap="round"
+                          className="transition-all duration-700"
+                        />
+                      )}
+                      {/* Segment 3: Agotado (Crimson / Red) */}
+                      {percentAgotado > 0 && (
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r={donutRadius}
+                          stroke="#e11d48"
+                          strokeWidth="10"
+                          fill="transparent"
+                          strokeDasharray={`${agotadoStroke} ${donutCircumference}`}
+                          strokeDashoffset={`-${okStroke + bajoStroke}`}
+                          strokeLinecap="round"
+                          className="transition-all duration-700"
+                        />
+                      )}
+                    </svg>
+
+                    {/* Center text inside Donut */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="font-heading text-xl font-extrabold text-[#0b1c30] leading-none">
+                        {percentOk}%
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter mt-0.5">
+                        Óptimo
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Legend with Real Physical Counts and Percentages */}
+                  <div className="flex-1 space-y-2 text-xs">
+                    {/* Óptimo */}
+                    <div className="flex items-center justify-between text-gray-700" title="Modelos con stock suficiente para la venta">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="font-semibold text-[11px]">Óptimo:</span>
+                      </div>
+                      <span className="font-bold text-emerald-600 text-xs">
+                        {percentOk}% <span className="text-gray-500 font-normal">({totalInStock} modelos)</span>
+                      </span>
+                    </div>
+
+                    {/* Bajo */}
+                    <div
+                      onClick={onNavigateToLowStock}
+                      className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-amber-50 cursor-pointer transition-colors group"
+                      title="Hacer clic para ver modelos con pocas unidades"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 group-hover:scale-110 transition-transform" />
+                        <span className="font-semibold text-[11px] group-hover:text-amber-800">Stock Bajo:</span>
+                      </div>
+                      <span className="font-bold text-amber-600 text-xs flex items-center gap-1">
+                        {percentBajo}% <span className="text-gray-500 font-normal">({totalLowStock} modelos)</span>
+                        <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                    </div>
+
+                    {/* Agotado */}
+                    <div
+                      onClick={onNavigateToOutOfStock || onNavigateToLowStock}
+                      className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors group"
+                      title="Hacer clic para ver modelos agotados (0 unidades)"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 group-hover:scale-110 transition-transform" />
+                        <span className="font-semibold text-[11px] group-hover:text-rose-800">Agotado:</span>
+                      </div>
+                      <span className="font-bold text-rose-600 text-xs flex items-center gap-1">
+                        {percentAgotado}% <span className="text-gray-500 font-normal">({totalOutOfStock} modelos)</span>
+                        <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-amber-600 font-bold flex items-center gap-1 group-hover:underline text-xs">
-                  {percentBajo}% ({totalLowStock} {totalLowStock === 1 ? 'modelo' : 'modelos'}) <ArrowRight className="w-3 h-3" />
+              </div>
+
+              {/* Bottom Insight */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#5e5d69]">
+                <span>Total en percheros y depósito:</span>
+                <span className="font-extrabold text-[#0b1c30]">
+                  {totalGarments.toLocaleString('es-AR')} prendas
                 </span>
               </div>
-              <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${percentBajo}%` }}></div>
-              </div>
             </div>
 
-            {/* Agotado */}
-            <div
-              onClick={onNavigateToOutOfStock || onNavigateToLowStock}
-              role="button"
-              className="cursor-pointer group p-2 -mx-2 rounded-xl hover:bg-rose-50/70 transition-all text-left"
-              title="Click para ir al Stock con artículos agotados"
-            >
-              <div className="flex justify-between items-center text-sm font-semibold mb-2">
-                <div className="flex items-center gap-2 text-[#0b1c30] group-hover:text-rose-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                  <span>Agotado</span>
+            {/* PANEL 2: GRÁFICO DE FLUJO - ENTRADAS VS. SALIDAS DE PRENDAS */}
+            <div className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow flex flex-col justify-between hover:border-[#42308f]/30 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#42308f] flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-heading text-sm font-extrabold text-[#0b1c30]">
+                        Entradas vs. Salidas
+                      </h3>
+                      <span className="text-[11px] text-[#5e5d69]">
+                        {selectedDate
+                          ? `Movimientos del ${formatReadableDate(selectedDate)}`
+                          : 'Volumen físico de prendas'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Indicator */}
+                  {hasFlowActivity ? (
+                    isDepleting ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold flex items-center gap-1 animate-pulse">
+                        <TrendingDown className="w-3 h-3" />
+                        Desabastecimiento
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Abastecido
+                      </span>
+                    )
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[10px] font-semibold">
+                      Sin movimientos
+                    </span>
+                  )}
                 </div>
-                <span className="text-rose-600 font-bold flex items-center gap-1 group-hover:underline text-xs">
-                  {percentAgotado}% ({totalOutOfStock} {totalOutOfStock === 1 ? 'modelo' : 'modelos'}) <ArrowRight className="w-3 h-3" />
-                </span>
+
+                {/* Visual Comparative Bars or Friendly Empty State */}
+                {hasFlowActivity ? (
+                  <div className="space-y-3 pt-1">
+                    {/* Entradas Bar */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="font-semibold text-emerald-800 flex items-center gap-1.5">
+                          <ArrowDownToLine className="w-3.5 h-3.5 text-emerald-600" />
+                          Prendas ingresadas
+                        </span>
+                        <span className="font-extrabold text-emerald-600">
+                          +{totalIngresos.toLocaleString('es-AR')} unidades
+                        </span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(100, Math.round((totalIngresos / maxFlow) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Salidas Bar */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="font-semibold text-rose-800 flex items-center gap-1.5">
+                          <ArrowUpToLine className="w-3.5 h-3.5 text-rose-600" />
+                          Prendas vendidas o retiradas
+                        </span>
+                        <span className="font-extrabold text-rose-600">
+                          -{totalEgresos.toLocaleString('es-AR')} unidades
+                        </span>
+                      </div>
+                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-rose-500 rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(100, Math.round((totalEgresos / maxFlow) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-[#f8f9ff] rounded-2xl p-4 text-center my-2 border border-gray-100">
+                    <p className="text-xs font-semibold text-[#0b1c30]">
+                      No se registraron movimientos en este período
+                    </p>
+                    <p className="text-[11px] text-[#5e5d69] mt-0.5">
+                      No hubo ingresos ni egresos de prendas {selectedDate ? `el ${formatReadableDate(selectedDate)}` : 'para el filtro aplicado'}.
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${percentAgotado}%` }}></div>
+
+              {/* Diagnostic Note / Balance */}
+              <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                <div className="text-[11px] text-[#5e5d69]">
+                  {hasFlowActivity ? (
+                    isDepleting ? (
+                      <span className="text-rose-700 font-semibold">
+                        Salieron <strong>{Math.abs(flowBalance)} prendas más</strong> de las que ingresaron
+                      </span>
+                    ) : (
+                      <span className="text-emerald-700 font-semibold">
+                        Balance favorable: <strong>+{flowBalance} prendas</strong> en perchero
+                      </span>
+                    )
+                  ) : (
+                    <span>Inventario estable sin altas ni bajas recientes</span>
+                  )}
+                </div>
+                <div className="text-[11px] font-bold text-[#42308f]">
+                  {dateAndSeasonFilteredMovements.length} registro{dateAndSeasonFilteredMovements.length !== 1 ? 's' : ''}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Bottom Row: Resumen por Categoría Table */}
-      <div className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow overflow-hidden">
-        {/* Table Header & Search */}
-        <div className="p-6 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
-              Resumen por Categoría
-            </h2>
-            <p className="text-xs text-[#5e5d69]">Prendas físicas y modelos registrados en cada colección</p>
-          </div>
+            {/* PANEL 3: SEMÁFORO DE REPOSICIÓN FÍSICA (URGENCIA Y MODELOS AFECTADOS) */}
+            <div
+              className={`rounded-3xl p-6 border card-shadow flex flex-col justify-between transition-all ${
+                totalOutOfStock > 0
+                  ? 'bg-gradient-to-br from-rose-50/80 via-white to-red-50/40 border-rose-300/80 hover:border-rose-400'
+                  : totalLowStock > 0
+                  ? 'bg-gradient-to-br from-amber-50/70 via-white to-orange-50/30 border-amber-300/80 hover:border-amber-400'
+                  : 'bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/30 border-emerald-300/80 hover:border-emerald-400'
+              }`}
+            >
+              <div>
+                {/* Header: Traffic Light Status */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {totalOutOfStock > 0 ? (
+                      <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                        <ShieldAlert className="w-4 h-4" />
+                      </div>
+                    ) : totalLowStock > 0 ? (
+                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <AlertTriangle className="w-4 h-4" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0b1c30]">
+                          SEMÁFORO DE REPOSICIÓN
+                        </span>
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            totalOutOfStock > 0
+                              ? 'bg-rose-500 ring-4 ring-rose-200 animate-ping'
+                              : totalLowStock > 0
+                              ? 'bg-amber-500 ring-4 ring-amber-200'
+                              : 'bg-emerald-500'
+                          }`}
+                        />
+                      </div>
+                      <h3 className="font-heading text-sm font-extrabold text-[#0b1c30]">
+                        {totalOutOfStock > 0
+                          ? 'Modelos en Quiebre'
+                          : totalLowStock > 0
+                          ? 'Stock Preventivo'
+                          : 'Percheros Completos'}
+                      </h3>
+                    </div>
+                  </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="w-4 h-4 text-[#797583] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                placeholder="Buscar categoría..."
-                className="pl-9 pr-4 py-1.5 text-xs bg-[#f8f9ff] border border-[#c9c4d3]/40 rounded-full focus:outline-none focus:border-[#42308f] focus:ring-1 focus:ring-[#42308f] text-[#0b1c30] w-48 transition-all"
-              />
-            </div>
-            {onOpenCrearStock && (
-              <button
-                onClick={onOpenCrearStock}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] rounded-full text-xs font-bold transition-all shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                + Nuevo Stock
-              </button>
-            )}
-            <button className="p-2 text-[#797583] hover:text-[#42308f] hover:bg-[#eff4ff] rounded-full transition-colors" title="Filtros">
-              <Filter className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Table Content */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[640px]">
-            <thead>
-              <tr className="border-t border-b border-gray-100 text-[11px] font-bold text-[#5e5d69] tracking-wider uppercase">
-                <th className="px-6 py-3.5">CATEGORÍA</th>
-                <th className="px-6 py-3.5">TOTAL PRENDAS</th>
-                <th className="px-6 py-3.5">MODELOS / ARTÍCULOS</th>
-                <th className="px-6 py-3.5">ESTADO CRÍTICO</th>
-                <th className="px-6 py-3.5 text-right">ACCIÓN</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
-              {filteredCategories.map((cat) => {
-                const catProducts = activeProducts.filter(
-                  (p) => p.category.toLowerCase() === cat.name.toLowerCase()
-                );
-                const hasCritical = cat.outOfStock > 0 || cat.lowStock > 0;
-
-                return (
-                  <tr
-                    key={cat.name}
-                    className="hover:bg-[#f8f9ff]/80 transition-colors group cursor-pointer"
-                    onClick={() => onSelectCategory(cat.name)}
+                  {/* Status Badge */}
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                      totalOutOfStock > 0
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : totalLowStock > 0
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-emerald-600 text-white'
+                    }`}
                   >
-                    {/* Categoría */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#eff4ff] flex items-center justify-center shrink-0">
-                          {getCategoryIcon(cat.name)}
-                        </div>
-                        <div>
-                          <span className="font-semibold text-[#0b1c30] group-hover:text-[#42308f] transition-colors block">
-                            {cat.name}
+                    {totalOutOfStock > 0 ? 'Crítico' : totalLowStock > 0 ? 'Alerta' : 'Óptimo'}
+                  </span>
+                </div>
+
+                {/* Real Physical Stock Urgency Box */}
+                <div className="mt-2 bg-white/85 backdrop-blur-xs p-3.5 rounded-2xl border border-rose-100/80 shadow-2xs space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[10px] font-bold uppercase text-[#5e5d69]">
+                      Prendas que requieren reposición
+                    </span>
+                    <span className="font-heading text-lg font-black text-rose-700">
+                      {totalOutOfStock} modelo{totalOutOfStock !== 1 ? 's' : ''} agotado{totalOutOfStock !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* List of Affected Garments Preview */}
+                  {totalOutOfStock > 0 ? (
+                    <div className="space-y-1.5 pt-1">
+                      {outOfStockProducts.slice(0, 2).map((p) => (
+                        <div
+                          key={p.sku}
+                          className="flex items-center justify-between text-[11px] bg-rose-50/60 px-2.5 py-1 rounded-lg border border-rose-100"
+                        >
+                          <span className="font-semibold text-gray-900 truncate max-w-[170px]" title={p.name}>
+                            {p.name}
                           </span>
-                          {cat.description && (
-                            <span className="text-[11px] text-[#797583] block">
-                              {cat.description}
+                          <span className="font-bold text-rose-700 shrink-0 text-[10px]">
+                            0 un. (Talle {p.size})
+                          </span>
+                        </div>
+                      ))}
+                      {outOfStockProducts.length > 2 && (
+                        <p className="text-[10px] text-gray-500 italic text-right">
+                          + {outOfStockProducts.length - 2} modelo{outOfStockProducts.length - 2 > 1 ? 's' : ''} más sin stock
+                        </p>
+                      )}
+                    </div>
+                  ) : totalLowStock > 0 ? (
+                    <div className="space-y-1.5 pt-1">
+                      {lowStockProducts.slice(0, 2).map((p) => (
+                        <div
+                          key={p.sku}
+                          className="flex items-center justify-between text-[11px] bg-amber-50/60 px-2.5 py-1 rounded-lg border border-amber-100"
+                        >
+                          <span className="font-semibold text-gray-900 truncate max-w-[170px]" title={p.name}>
+                            {p.name}
+                          </span>
+                          <span className="font-bold text-amber-700 shrink-0 text-[10px]">
+                            {p.stock} un. (Mín. {p.minStockThreshold})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-emerald-800 font-medium">
+                      Todas las prendas tienen stock disponible por encima de su umbral mínimo de seguridad.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-3 mt-3 border-t border-gray-100/80">
+                {totalOutOfStock > 0 ? (
+                  <button
+                    onClick={onNavigateToOutOfStock || onNavigateToLowStock}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95 cursor-pointer"
+                  >
+                    <span>Reponer {totalOutOfStock} modelo{totalOutOfStock !== 1 ? 's' : ''} agotado{totalOutOfStock !== 1 ? 's' : ''}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : totalLowStock > 0 ? (
+                  <button
+                    onClick={onNavigateToLowStock}
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95 cursor-pointer"
+                  >
+                    <span>Revisar {totalLowStock} modelo{totalLowStock !== 1 ? 's' : ''} con stock bajo</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <div className="w-full text-center text-xs font-bold text-emerald-700 py-1">
+                    ✓ Catálogo abastecido para atender clientes
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Selected Day Activity Highlight (When a day is selected via calendar) */}
+          {selectedDate && (
+            <div className="bg-gradient-to-r from-[#eff4ff] via-white to-[#fbf8ff] rounded-3xl p-5 border border-[#42308f]/20 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#42308f] text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#42308f]">
+                      ACTIVIDAD DEL DÍA
+                    </span>
+                    <span className="px-2 py-0.2 rounded-full bg-white text-[#42308f] border border-[#42308f]/20 text-[10px] font-extrabold">
+                      {dateAndSeasonFilteredMovements.length} movimientos
+                    </span>
+                  </div>
+                  <h3 className="font-heading font-extrabold text-base text-[#0b1c30]">
+                    {formatReadableDate(selectedDate)}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase block">
+                    Prendas ingresadas
+                  </span>
+                  <span className="font-heading text-lg font-extrabold text-emerald-600">
+                    +{totalIngresos} unidades
+                  </span>
+                </div>
+                <div className="h-8 w-px bg-gray-200" />
+                <div>
+                  <span className="text-[10px] font-bold text-rose-700 uppercase block">
+                    Prendas egresadas / vendidas
+                  </span>
+                  <span className="font-heading text-lg font-extrabold text-rose-600">
+                    -{totalEgresos} unidades
+                  </span>
+                </div>
+                <div className="h-8 w-px bg-gray-200" />
+                <div>
+                  <span className="text-[10px] font-bold text-[#5e5d69] uppercase block">
+                    Balance Neto
+                  </span>
+                  <span
+                    className={`font-heading text-lg font-extrabold ${
+                      flowBalance >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                    }`}
+                  >
+                    {flowBalance > 0 ? `+${flowBalance}` : flowBalance} prendas
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Day Activity List Drawer / Expandable section */}
+          {selectedDate && dateAndSeasonFilteredMovements.length > 0 && (
+            <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow">
+              <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#42308f]" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#0b1c30]">
+                    Prendas y movimientos del {formatReadableDate(selectedDate)}
+                  </h4>
+                </div>
+                <span className="text-xs text-[#5e5d69] font-semibold">
+                  {dateAndSeasonFilteredMovements.length} registro{dateAndSeasonFilteredMovements.length > 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-[11px] font-bold text-[#5e5d69] uppercase border-b border-gray-100">
+                      <th className="pb-2">Hora</th>
+                      <th className="pb-2">Tipo</th>
+                      <th className="pb-2">Prenda</th>
+                      <th className="pb-2 text-right">Cant.</th>
+                      <th className="pb-2">Destino / Proveedor</th>
+                      <th className="pb-2">Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {dateAndSeasonFilteredMovements.map((m) => (
+                      <tr key={m.id} className="hover:bg-[#f8f9ff]">
+                        <td className="py-2.5 pr-3 text-gray-500 font-medium whitespace-nowrap">
+                          {m.date}
+                        </td>
+                        <td className="py-2.5 pr-3">
+                          {m.type === 'ingreso' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 text-[10px]">
+                              + Ingreso
                             </span>
                           )}
-                        </div>
-                      </div>
-                    </td>
+                          {m.type === 'egreso' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-700 text-[10px]">
+                              - Egreso
+                            </span>
+                          )}
+                          {m.type === 'ajuste' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold bg-purple-50 text-[#42308f] text-[10px]">
+                              Ajuste
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 pr-3 font-semibold text-gray-900">
+                          {m.productName}
+                          <span className="block font-mono text-[10px] text-[#42308f] font-normal">
+                            {m.sku}
+                          </span>
+                        </td>
+                        <td className="py-2.5 pr-3 text-right font-extrabold">
+                          <span
+                            className={
+                              m.quantity > 0
+                                ? 'text-emerald-600'
+                                : m.quantity < 0
+                                ? 'text-rose-600'
+                                : 'text-gray-700'
+                            }
+                          >
+                            {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
+                          </span>
+                        </td>
+                        <td className="py-2.5 pr-3 text-gray-700 font-medium">
+                          {m.sourceOrDestination || '-'}
+                        </td>
+                        <td className="py-2.5 text-gray-500 text-[11px]">
+                          {m.notes || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
-                    {/* Total Prendas (Unidades físicas) */}
-                    <td className="px-6 py-4">
-                      <span className="font-extrabold text-[#0b1c30]">
-                        {cat.totalItems.toLocaleString('es-AR')}
-                      </span>{' '}
-                      <span className="text-xs text-[#5e5d69]">unidades</span>
-                    </td>
+          {/* ======================================================== */}
+          {/* 2. ZONA CENTRAL: GRÁFICO PRINCIPAL DE BARRAS APILADAS   */}
+          {/* ======================================================== */}
+          <div className="bg-white rounded-3xl p-6 lg:p-7 border border-[#c9c4d3]/40 card-shadow space-y-5">
+            {/* Header & Boutique Legend */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#42308f]">
+                    DISTRIBUCIÓN DE STOCK FÍSICO
+                  </span>
+                  {selectedSeason !== 'Todas' && (
+                    <span className="px-2 py-0.5 rounded-full bg-purple-50 text-[#42308f] text-[10px] font-bold">
+                      Temporada: {selectedSeason}
+                    </span>
+                  )}
+                </div>
+                <h2 className="font-heading text-xl font-extrabold text-[#0b1c30]">
+                  Prendas por Categoría (Barras Apiladas)
+                </h2>
+                <p className="text-xs text-[#5e5d69] mt-0.5">
+                  Compara visualmente qué parte del stock de cada colección está lista para la venta (verde) y qué proporción requiere reposición (naranja/rojo).
+                </p>
+              </div>
 
-                    {/* Modelos / Artículos registrados */}
-                    <td className="px-6 py-4">
-                      <span className="font-medium text-[#5e5d69]">
-                        {catProducts.length} {catProducts.length === 1 ? 'modelo' : 'modelos'}
-                      </span>
-                    </td>
+              {/* Color Code Legend */}
+              <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs font-semibold">
+                <div className="flex items-center gap-1.5" title="Prendas con stock disponible suficiente">
+                  <span className="w-3 h-3 rounded-md bg-emerald-500 shadow-2xs" />
+                  <span className="text-[#0b1c30]">Disponibles</span>
+                </div>
+                <div className="flex items-center gap-1.5" title="Prendas de modelos con pocas unidades">
+                  <span className="w-3 h-3 rounded-md bg-amber-500 shadow-2xs" />
+                  <span className="text-[#0b1c30]">Stock bajo</span>
+                </div>
+                <div className="flex items-center gap-1.5" title="Modelos con 0 unidades">
+                  <span className="w-3 h-3 rounded-md bg-rose-500 shadow-2xs" />
+                  <span className="text-[#0b1c30]">Agotados</span>
+                </div>
+              </div>
+            </div>
 
-                    {/* Estado Crítico (Stock Bajo y Agotados) */}
-                    <td
-                      className="px-6 py-4"
-                      onClick={(e) => {
-                        if (cat.outOfStock > 0) {
-                          e.stopPropagation();
-                          onSelectCategoryWithFilter?.(cat.name, 'agotado');
-                        } else if (cat.lowStock > 0) {
-                          e.stopPropagation();
-                          onSelectCategoryWithFilter?.(cat.name, 'bajo');
-                        }
-                      }}
+            {/* Stacked Bars Visual Chart */}
+            <div className="pt-2 pb-2">
+              {/* Chart Canvas Area */}
+              <div className="h-64 flex items-end justify-between gap-3 sm:gap-6 px-3 sm:px-8 border-b border-gray-200 relative">
+                {/* Horizontal guideline levels */}
+                <div className="absolute inset-x-0 top-0 border-b border-dashed border-gray-100 pointer-events-none flex justify-end pr-2 text-[10px] text-gray-400">
+                  {maxCategoryUnits} prendas
+                </div>
+                <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-gray-100 pointer-events-none flex justify-end pr-2 text-[10px] text-gray-400">
+                  {Math.round(maxCategoryUnits / 2)} prendas
+                </div>
+
+                {activeCategories.map((cat) => {
+                  const heightPercent = Math.max(16, Math.round((cat.totalItems / maxCategoryUnits) * 100));
+                  const isHovered = hoveredCategory === cat.name;
+
+                  // Compute proportion inside the category total
+                  const okShare = cat.totalItems > 0 ? (cat.okUnits / cat.totalItems) * 100 : 0;
+                  const lowShare = cat.totalItems > 0 ? (cat.lowUnits / cat.totalItems) * 100 : 0;
+
+                  return (
+                    <div
+                      key={cat.name}
+                      onMouseEnter={() => setHoveredCategory(cat.name)}
+                      onMouseLeave={() => setHoveredCategory(null)}
+                      onClick={() => onSelectCategory(cat.name)}
+                      className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer relative"
                     >
-                      <div className="flex items-center gap-2 flex-wrap">
+                      {/* Everyday Language Tooltip on Hover */}
+                      {isHovered && (
+                        <div className="absolute -top-20 z-20 bg-[#0b1c30] text-white p-3 rounded-xl shadow-xl text-left min-w-[210px] pointer-events-none transform -translate-y-2 transition-all">
+                          <div className="flex items-center justify-between font-bold text-xs border-b border-white/20 pb-1 mb-1.5">
+                            <span>{cat.name}</span>
+                            <span className="text-purple-300 font-extrabold">{cat.totalItems} prendas en total</span>
+                          </div>
+                          <div className="space-y-1 text-[11px]">
+                            <div className="flex justify-between text-emerald-400">
+                              <span>✓ Disponibles para venta:</span>
+                              <strong>{cat.okUnits} un. ({Math.round(okShare)}%)</strong>
+                            </div>
+                            {cat.lowUnits > 0 && (
+                              <div className="flex justify-between text-amber-300">
+                                <span>⚠️ Con stock bajo:</span>
+                                <strong>{cat.lowUnits} un. ({Math.round(lowShare)}%)</strong>
+                              </div>
+                            )}
+                            {cat.outOfStock > 0 && (
+                              <div className="flex justify-between text-rose-400 font-bold pt-0.5 border-t border-white/10">
+                                <span>✕ Modelos agotados:</span>
+                                <strong>{cat.outOfStock} modelo{cat.outOfStock > 1 ? 's' : ''} (0 un.)</strong>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Value Above Bar */}
+                      <div
+                        className={`text-xs font-extrabold mb-1.5 transition-all flex items-center gap-1 ${
+                          isHovered ? 'text-[#42308f] scale-110' : 'text-[#5e5d69]'
+                        }`}
+                      >
+                        <span>{cat.totalItems}</span>
                         {cat.outOfStock > 0 && (
                           <span
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-[#ba1a1a] border border-rose-200/80 hover:bg-rose-100 cursor-pointer transition-colors"
-                            title="Ver modelos agotados"
-                          >
-                            <Ban className="w-3 h-3" /> {cat.outOfStock} agotado{cat.outOfStock > 1 ? 's' : ''}
-                          </span>
-                        )}
-                        {cat.lowStock > 0 && (
-                          <span
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100 cursor-pointer transition-colors"
-                            title="Ver modelos con stock bajo"
-                          >
-                            <AlertTriangle className="w-3 h-3" /> {cat.lowStock} stock bajo
-                          </span>
-                        )}
-                        {!hasCritical && (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Óptimo
-                          </span>
+                            className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"
+                            title={`${cat.outOfStock} modelos agotados en ${cat.name}`}
+                          />
                         )}
                       </div>
-                    </td>
 
-                    {/* Acción */}
-                    <td className="px-6 py-4 text-right">
-                      {hasCritical ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (cat.outOfStock > 0) {
-                              onSelectCategoryWithFilter?.(cat.name, 'agotado');
-                            } else {
-                              onSelectCategoryWithFilter?.(cat.name, 'bajo');
-                            }
-                          }}
-                          className="px-4 py-1.5 bg-[#ba1a1a] text-white text-xs font-bold rounded-full hover:bg-rose-700 transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer"
+                      {/* The STACKED BAR Column */}
+                      <div
+                        className={`w-full max-w-[56px] rounded-t-2xl overflow-hidden flex flex-col justify-end transition-all duration-300 shadow-xs relative ${
+                          isHovered ? 'ring-2 ring-[#42308f] shadow-md scale-[1.03]' : ''
+                        }`}
+                        style={{ height: `${heightPercent}%` }}
+                      >
+                        {/* Out of Stock Warning Cap (if any model is at 0) */}
+                        {cat.outOfStock > 0 && (
+                          <div
+                            className="w-full bg-rose-600 hover:bg-rose-700 transition-colors py-0.5 flex items-center justify-center text-[9px] font-black text-white shrink-0"
+                            title={`${cat.outOfStock} modelos agotados`}
+                          >
+                            !
+                          </div>
+                        )}
+
+                        {/* Top Segment: Low Stock (Amber/Orange) */}
+                        {cat.lowUnits > 0 && (
+                          <div
+                            className="w-full bg-amber-400 hover:bg-amber-500 transition-colors"
+                            style={{ height: `${lowShare}%` }}
+                            title={`${cat.name}: ${cat.lowUnits} prendas con pocas unidades`}
+                          />
+                        )}
+
+                        {/* Bottom Segment: Optimal / Available Stock (Emerald Green) */}
+                        <div
+                          className="w-full bg-emerald-500 hover:bg-emerald-600 transition-colors flex-1"
+                          title={`${cat.name}: ${cat.okUnits} prendas disponibles para la venta`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Category Labels and Action Hints below bars */}
+              <div className="flex items-center justify-between gap-3 sm:gap-6 px-3 sm:px-8 pt-3">
+                {activeCategories.map((cat) => (
+                  <div key={cat.name} className="flex-1 text-center">
+                    <button
+                      onClick={() => onSelectCategory(cat.name)}
+                      className="font-bold text-xs text-[#0b1c30] hover:text-[#42308f] transition-colors truncate block w-full cursor-pointer"
+                      title={`Ver prendas de ${cat.name}`}
+                    >
+                      {cat.name}
+                    </button>
+                    <div className="text-[10px] text-[#797583] mt-0.5 truncate">
+                      {cat.modelsCount} modelo{cat.modelsCount !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Boutique Executive Insights Pill Bar */}
+            <div className="bg-[#f8f9ff] rounded-2xl p-4 border border-[#c9c4d3]/30 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#42308f]" />
+                <span className="font-bold text-[#0b1c30]">Diagnóstico de Colecciones:</span>
+                {mostCriticalCategory && mostCriticalCategory.outOfStock > 0 ? (
+                  <span className="text-rose-700">
+                    La categoría <strong>{mostCriticalCategory.name}</strong> tiene <strong>{mostCriticalCategory.outOfStock} modelo(s) agotado(s)</strong> que requieren reposición urgente con el proveedor.
+                  </span>
+                ) : mostCriticalCategory && mostCriticalCategory.lowStock > 0 ? (
+                  <span className="text-amber-800">
+                    La categoría <strong>{mostCriticalCategory.name}</strong> cuenta con <strong>{mostCriticalCategory.lowStock} prenda(s) en stock bajo</strong> próximas a agotarse.
+                  </span>
+                ) : (
+                  <span className="text-emerald-700">
+                    Todas las colecciones mantienen una proporción de prendas disponibles saludable para la venta.
+                  </span>
+                )}
+              </div>
+
+              {mostCriticalCategory && (mostCriticalCategory.outOfStock > 0 || mostCriticalCategory.lowStock > 0) && (
+                <button
+                  onClick={() => onSelectCategory(mostCriticalCategory.name)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#42308f]/30 rounded-xl text-xs font-bold text-[#42308f] hover:bg-[#42308f] hover:text-white transition-all shadow-2xs self-start md:self-auto cursor-pointer"
+                >
+                  <span>Ver {mostCriticalCategory.name}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* 3. ZONA INFERIOR: TABLA DE INVENTARIO POR CATEGORÍA     */}
+          {/* ======================================================== */}
+          <div className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow overflow-hidden">
+            {/* Table Header & Search */}
+            <div className="p-6 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
+                  Inventario por Colección
+                </h2>
+                <p className="text-xs text-[#5e5d69]">
+                  Prendas físicas en perchero y modelos que requieren reposición
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#797583] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder="Buscar colección..."
+                    className="pl-9 pr-4 py-1.5 text-xs bg-[#f8f9ff] border border-[#c9c4d3]/40 rounded-full focus:outline-none focus:border-[#42308f] focus:ring-1 focus:ring-[#42308f] text-[#0b1c30] w-48 transition-all"
+                  />
+                  {categorySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCategorySearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {onOpenCrearStock && (
+                  <button
+                    onClick={onOpenCrearStock}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] rounded-full text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    + Nuevo Stock
+                  </button>
+                )}
+                <button className="p-2 text-[#797583] hover:text-[#42308f] hover:bg-[#eff4ff] rounded-full transition-colors cursor-pointer" title="Filtros">
+                  <Filter className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Table Content or Filter Empty State */}
+            {filteredCategories.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[#5e5d69]">
+                <p className="font-semibold text-gray-900">
+                  No se encontraron colecciones con el término &quot;{categorySearch}&quot;
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCategorySearch('')}
+                  className="mt-2 text-[#42308f] font-bold hover:underline cursor-pointer"
+                >
+                  Limpiar búsqueda
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[640px]">
+                  <thead>
+                    <tr className="border-t border-b border-gray-100 text-[11px] font-bold text-[#5e5d69] tracking-wider uppercase">
+                      <th className="px-6 py-3.5">CATEGORÍA</th>
+                      <th className="px-6 py-3.5">TOTAL PRENDAS</th>
+                      <th className="px-6 py-3.5">MODELOS / ARTÍCULOS</th>
+                      <th className="px-6 py-3.5">ESTADO DE REPOSICIÓN</th>
+                      <th className="px-6 py-3.5 text-right">ACCIÓN</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {filteredCategories.map((cat) => {
+                      const catProducts = activeProducts.filter(
+                        (p) => p.category.toLowerCase() === cat.name.toLowerCase()
+                      );
+                      const hasCritical = cat.outOfStock > 0 || cat.lowStock > 0;
+
+                      return (
+                        <tr
+                          key={cat.name}
+                          className="hover:bg-[#f8f9ff]/80 transition-colors group cursor-pointer"
+                          onClick={() => onSelectCategory(cat.name)}
                         >
-                          Revisar
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectCategory(cat.name);
-                          }}
-                          className="px-4 py-1.5 border border-[#42308f] text-[#42308f] text-xs font-bold rounded-full hover:bg-[#42308f] hover:text-white transition-all inline-flex items-center gap-1 group-hover:bg-[#42308f] group-hover:text-white cursor-pointer"
-                        >
-                          Detalles
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                          {/* Categoría */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-[#eff4ff] flex items-center justify-center shrink-0">
+                                {getCategoryIcon(cat.name)}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-[#0b1c30] group-hover:text-[#42308f] transition-colors block">
+                                  {cat.name}
+                                </span>
+                                {cat.description && (
+                                  <span className="text-[11px] text-[#797583] block">
+                                    {cat.description}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Total Prendas (Unidades físicas) */}
+                          <td className="px-6 py-4">
+                            <span className="font-extrabold text-[#0b1c30]">
+                              {cat.totalItems.toLocaleString('es-AR')}
+                            </span>{' '}
+                            <span className="text-xs text-[#5e5d69]">prendas</span>
+                          </td>
+
+                          {/* Modelos / Artículos registrados */}
+                          <td className="px-6 py-4">
+                            <span className="font-medium text-[#5e5d69]">
+                              {catProducts.length} {catProducts.length === 1 ? 'modelo' : 'modelos'}
+                            </span>
+                          </td>
+
+                          {/* Estado Crítico (Stock Bajo y Agotados) */}
+                          <td
+                            className="px-6 py-4"
+                            onClick={(e) => {
+                              if (cat.outOfStock > 0) {
+                                e.stopPropagation();
+                                onSelectCategoryWithFilter?.(cat.name, 'agotado');
+                              } else if (cat.lowStock > 0) {
+                                e.stopPropagation();
+                                onSelectCategoryWithFilter?.(cat.name, 'bajo');
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {cat.outOfStock > 0 && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-[#ba1a1a] border border-rose-200/80 hover:bg-rose-100 cursor-pointer transition-colors"
+                                  title="Ver modelos agotados"
+                                >
+                                  <Ban className="w-3 h-3" /> {cat.outOfStock} agotado{cat.outOfStock > 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {cat.lowStock > 0 && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100 cursor-pointer transition-colors"
+                                  title="Ver modelos con stock bajo"
+                                >
+                                  <AlertTriangle className="w-3 h-3" /> {cat.lowStock} stock bajo
+                                </span>
+                              )}
+                              {!hasCritical && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                  Óptimo
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Acción */}
+                          <td className="px-6 py-4 text-right">
+                            {hasCritical ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (cat.outOfStock > 0) {
+                                    onSelectCategoryWithFilter?.(cat.name, 'agotado');
+                                  } else {
+                                    onSelectCategoryWithFilter?.(cat.name, 'bajo');
+                                  }
+                                }}
+                                className="px-4 py-1.5 bg-[#ba1a1a] text-white text-xs font-bold rounded-full hover:bg-rose-700 transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                Revisar
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectCategory(cat.name);
+                                }}
+                                className="px-4 py-1.5 border border-[#42308f] text-[#42308f] text-xs font-bold rounded-full hover:bg-[#42308f] hover:text-white transition-all inline-flex items-center gap-1 group-hover:bg-[#42308f] group-hover:text-white cursor-pointer"
+                              >
+                                Ver prendas
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

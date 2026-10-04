@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit, Package, Save, Trash2 } from 'lucide-react';
+import { X, Edit, Package, Save, Check } from 'lucide-react';
 import { ProductItem } from '../types';
+import { MAIN_COLOR_FAMILIES } from '../utils/colors';
 
 interface EditarStockModalProps {
   isOpen: boolean;
@@ -19,7 +20,11 @@ export const EditarStockModal: React.FC<EditarStockModalProps> = ({
 
   useEffect(() => {
     if (product) {
-      setFormData({ ...product });
+      setFormData({
+        ...product,
+        colorFamily: product.colorFamily || product.colorName || 'Negro',
+        specificColor: product.specificColor || '',
+      });
     }
   }, [product]);
 
@@ -37,8 +42,11 @@ export const EditarStockModal: React.FC<EditarStockModalProps> = ({
       status = 'bajo';
     }
 
+    const effectiveColorName = (formData.specificColor || '').trim() || formData.colorFamily || formData.colorName;
+
     onSaveProduct({
       ...formData,
+      colorName: effectiveColorName,
       status,
     });
     onClose();
@@ -91,6 +99,63 @@ export const EditarStockModal: React.FC<EditarStockModalProps> = ({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
             />
+          </div>
+
+          {/* Color: Familia y Específico */}
+          <div className="space-y-2 p-3 bg-[#f8f9ff] rounded-2xl border border-gray-200/70">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-gray-700">
+                Familia de Color: <span className="font-extrabold text-[#42308f]">{formData.colorFamily || 'Negro'}</span>
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {MAIN_COLOR_FAMILIES.map((col) => (
+                <button
+                  key={col.name}
+                  type="button"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      colorFamily: col.name,
+                      colorHex: col.hex,
+                    })
+                  }
+                  title={col.name}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                    (formData.colorFamily || '').toLowerCase() === col.name.toLowerCase()
+                      ? 'ring-2 ring-offset-2 ring-[#42308f] scale-110 shadow-xs'
+                      : 'hover:scale-105 opacity-85'
+                  }`}
+                  style={{
+                    backgroundColor: col.hex,
+                    border: col.hasBorder ? '1px solid #d1d5db' : 'none',
+                  }}
+                >
+                  {(formData.colorFamily || '').toLowerCase() === col.name.toLowerCase() && (
+                    <Check
+                      className={`w-3 h-3 ${
+                        col.name === 'Blanco' || col.name === 'Amarillo' || col.name === 'Celeste'
+                          ? 'text-gray-900'
+                          : 'text-white'
+                      }`}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="pt-1">
+              <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                Color Específico o Comercial (Opcional)
+              </label>
+              <input
+                type="text"
+                placeholder="Ej. Bordó, Rojo Cherry, Marrón Oscuro..."
+                value={formData.specificColor || ''}
+                onChange={(e) => setFormData({ ...formData, specificColor: e.target.value })}
+                className="w-full text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

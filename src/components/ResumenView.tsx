@@ -27,6 +27,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CategorySummary, ProductItem, StockMovement } from '../types';
+import { Can } from './auth/Can';
 
 interface ResumenViewProps {
   categories: CategorySummary[];
@@ -301,13 +302,15 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
             Exportar
           </button>
           {onOpenCrearStock && (
-            <button
-              onClick={onOpenCrearStock}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-[#42308f]/40 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Crear Stock
-            </button>
+            <Can role={['developer', 'admin']}>
+              <button
+                onClick={onOpenCrearStock}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-[#42308f]/40 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Crear Stock
+              </button>
+            </Can>
           )}
           {onOpenRegistrarVenta && (
             <button
@@ -320,13 +323,15 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               Registrar Venta
             </button>
           )}
-          <button
-            onClick={onOpenNuevoIngreso}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Ingreso
-          </button>
+          <Can role={['developer', 'admin']}>
+            <button
+              onClick={onOpenNuevoIngreso}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Ingreso
+            </button>
+          </Can>
         </div>
       </div>
 

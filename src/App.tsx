@@ -1096,7 +1096,7 @@ export default function App() {
         onClose={() => {
           setIsNuevaReservaOpen(false);
           setProductForReserva(null);
-        }}
+         }}
         products={products}
         onCreateReserva={handleCreateReserva}
         initialProduct={productForReserva}

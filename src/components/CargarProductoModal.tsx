@@ -21,6 +21,7 @@ import {
   Building,
 } from 'lucide-react';
 import { ProductItem } from '../types';
+import { MAIN_COLOR_FAMILIES } from '../utils/colors';
 
 interface CargarProductoModalProps {
   isOpen: boolean;
@@ -47,18 +48,6 @@ interface CargarProductoModalProps {
   initialMode?: 'reponer' | 'nuevo';
   onCreateCategory?: (categoryName: string) => void;
 }
-
-const PRESET_COLORS = [
-  { name: 'Negro', hex: '#18181b' },
-  { name: 'Blanco', hex: '#ffffff' },
-  { name: 'Azul Marino', hex: '#1e3a8a' },
-  { name: 'Rojo', hex: '#ef4444' },
-  { name: 'Beige', hex: '#d4b996' },
-  { name: 'Gris', hex: '#6b7280' },
-  { name: 'Verde Oliva', hex: '#4d7c0f' },
-  { name: 'Camel', hex: '#c2925b' },
-  { name: 'Rosa Pastel', hex: '#f472b6' },
-];
 
 const STANDARD_SIZES: ProductItem['size'][] = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
@@ -99,6 +88,8 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
   const [newCategoryName, setNewCategoryName] = useState('');
   const [price, setPrice] = useState<number>(35000);
   const [cost, setCost] = useState<number>(16000);
+  const [colorFamily, setColorFamily] = useState('Negro');
+  const [specificColor, setSpecificColor] = useState('');
   const [colorName, setColorName] = useState('Negro');
   const [colorHex, setColorHex] = useState('#18181b');
   const [sku, setSku] = useState('');
@@ -133,8 +124,10 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
       setSingleSize(productToEdit.size);
       setIsCurvaTalles(false);
       setSeason(productToEdit.season);
-      setColorName(productToEdit.colorName);
-      setColorHex(productToEdit.colorHex);
+      setColorFamily(productToEdit.colorFamily || productToEdit.colorName || 'Negro');
+      setSpecificColor(productToEdit.specificColor || '');
+      setColorName(productToEdit.colorName || 'Negro');
+      setColorHex(productToEdit.colorHex || '#18181b');
       setSingleQuantity(productToEdit.stock);
       setMinStockThreshold(productToEdit.minStockThreshold);
       setPrice(productToEdit.price);
@@ -179,6 +172,8 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
       setSingleSize('M');
       setIsCurvaTalles(false);
       setSeason('Invierno');
+      setColorFamily('Negro');
+      setSpecificColor('');
       setColorName('Negro');
       setColorHex('#18181b');
       setSingleQuantity(20);
@@ -231,8 +226,11 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
   };
 
   const handleColorSelect = (col: { name: string; hex: string }) => {
-    setColorName(col.name);
+    setColorFamily(col.name);
     setColorHex(col.hex);
+    if (!specificColor.trim()) {
+      setColorName(col.name);
+    }
   };
 
   const handleSingleSizeChange = (sz: ProductItem['size']) => {
@@ -274,6 +272,8 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
       onCreateCategory(newCategoryName.trim());
     }
 
+    const effectiveColorName = specificColor.trim() || colorFamily;
+
     if (isCurvaTalles && onSaveBatchProducts) {
       // Create one product entry for each size that has > 0 units
       const batch: ProductItem[] = [];
@@ -288,7 +288,9 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
             name: `${name.trim()} (Talle ${sz})`,
             description: description.trim() || `Prenda confeccionada de ${finalCategory}`,
             category: finalCategory,
-            colorName,
+            colorName: effectiveColorName,
+            colorFamily,
+            specificColor: specificColor.trim() || undefined,
             colorHex,
             size: sz as ProductItem['size'],
             season,
@@ -321,7 +323,9 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
       name: name.trim(),
       description: description.trim() || `Prenda confeccionada de ${finalCategory}`,
       category: finalCategory,
-      colorName,
+      colorName: effectiveColorName,
+      colorFamily,
+      specificColor: specificColor.trim() || undefined,
       colorHex,
       size: singleSize,
       season,
@@ -716,34 +720,34 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
                 )}
               </div>
 
-              {/* 3. Color Seleccionable */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
+              {/* 3. Color Seleccionable: Familia y Detalle Comercial */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-700">
-                    Color: <span className="text-[#42308f] font-extrabold">{colorName}</span>
+                    Familia de Color Principal: <span className="text-[#42308f] font-extrabold">{colorFamily}</span>
                   </label>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {PRESET_COLORS.map((col) => (
+                  {MAIN_COLOR_FAMILIES.map((col) => (
                     <button
                       key={col.name}
                       type="button"
                       onClick={() => handleColorSelect(col)}
                       title={col.name}
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                        colorName === col.name
+                        colorFamily === col.name
                           ? 'ring-2 ring-offset-2 ring-[#42308f] scale-110 shadow-xs'
                           : 'hover:scale-105 opacity-90'
                       }`}
                       style={{
                         backgroundColor: col.hex,
-                        border: col.hex === '#ffffff' ? '1px solid #d1d5db' : 'none',
+                        border: col.hasBorder ? '1px solid #d1d5db' : 'none',
                       }}
                     >
-                      {colorName === col.name && (
+                      {colorFamily === col.name && (
                         <Check
                           className={`w-3.5 h-3.5 ${
-                            col.hex === '#ffffff' || col.hex === '#d4b996'
+                            col.name === 'Blanco' || col.name === 'Amarillo' || col.name === 'Celeste'
                               ? 'text-gray-900'
                               : 'text-white'
                           }`}
@@ -751,6 +755,25 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
                       )}
                     </button>
                   ))}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Color Específico o Comercial (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={`Ej. ${colorFamily === 'Rojo' ? 'Bordó, Rojo Cherry...' : colorFamily === 'Marrón' ? 'Marrón Oscuro, Chocolate...' : 'Tono comercial de la boutique...'}`}
+                    value={specificColor}
+                    onChange={(e) => {
+                      setSpecificColor(e.target.value);
+                      setColorName(e.target.value.trim() || colorFamily);
+                    }}
+                    className="w-full text-xs px-3.5 py-2 bg-[#f8f9ff] border border-gray-200 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none"
+                  />
+                  <span className="text-[10px] text-gray-500 mt-0.5 block">
+                    Nombre comercial para el catálogo y etiqueta (ej. si elegiste Rojo, podés detallar &quot;Bordó&quot;).
+                  </span>
                 </div>
               </div>
 

@@ -45,11 +45,33 @@ import { RegistrarVentaModal } from './components/RegistrarVentaModal';
 import { ReservasView } from './components/ReservasView';
 import { NuevaReservaModal } from './components/NuevaReservaModal';
 import { ProveedoresView } from './components/ProveedoresView';
+import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { RoleRoute } from './components/auth/RoleRoute';
+import { Can } from './components/auth/Can';
+import { ReportesVentasView } from './components/ReportesVentasView';
+import { ConfiguracionSistemaView } from './components/ConfiguracionSistemaView';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<NavScreen>('resumen');
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, role, logout, loginWithRole, isAuthenticated } = useAuth();
+
+  const currentScreen = useMemo<NavScreen>(() => {
+    const path = location.pathname;
+    if (path.startsWith('/stock')) return 'stock';
+    if (path.startsWith('/productos')) return 'productos';
+    if (path.startsWith('/movimientos')) return 'movimientos';
+    if (path.startsWith('/reservas')) return 'reservas';
+    if (path.startsWith('/promociones')) return 'promociones';
+    if (path.startsWith('/proveedores')) return 'proveedores';
+    if (path.startsWith('/configuracion')) return 'configuracion';
+    if (path.startsWith('/reportes-ventas')) return 'resumen';
+    return 'resumen';
+  }, [location.pathname]);
+
   const [selectedCategory, setSelectedCategory] = useState<string>('Buzos');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -176,7 +198,7 @@ export default function App() {
   const handleSelectCategory = (categoryName: string) => {
     setSelectedCategory(categoryName);
     setStockStatusFilter('all');
-    setCurrentScreen('stock');
+    navigate('/stock');
   };
 
   // Switch to Stock Detail view filtered by status (e.g. low stock)
@@ -186,7 +208,7 @@ export default function App() {
   ) => {
     setSelectedCategory(categoryName);
     setStockStatusFilter(filter);
-    setCurrentScreen('stock');
+    navigate('/stock');
     if (filter === 'bajo') {
       showToast('Mostrando prendas con stock bajo');
     } else if (filter === 'agotado') {
@@ -404,7 +426,7 @@ export default function App() {
       setMovements((prev) => [newMovement, ...prev]);
     }
     setSelectedCategory(newCat.name);
-    setCurrentScreen('stock');
+    navigate('/stock');
     showToast(`Stock de "${newCat.name}" creado con éxito`);
   };
 
@@ -832,303 +854,375 @@ export default function App() {
     showToast('¡Datos de prueba iniciales restaurados con éxito!');
   };
 
-  // If user navigated to login or logged out
-  if (!isLoggedIn || currentScreen === 'login') {
-    return (
-      <LoginView
-        onLoginSuccess={(email) => {
-          setIsLoggedIn(true);
-          setCurrentScreen('resumen');
-          showToast(`¡Bienvenida de vuelta, ${email.split('@')[0]}!`);
-        }}
-        onBackToApp={() => {
-          setIsLoggedIn(true);
-          setCurrentScreen('resumen');
-        }}
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex font-body selection:bg-[#42308f]/20 selection:text-[#42308f]">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        currentScreen={currentScreen}
-        onNavigate={(screen) => {
-          if (screen === 'stock' && currentScreen !== 'stock') {
-            setStockStatusFilter('all');
+    <>
+      <Routes>
+        {/* PANTALLA PÚBLICA DE LOGIN */}
+        <Route
+          path="/login"
+          element={
+            <LoginView
+              onLoginSuccess={(email) => {
+                showToast(`¡Bienvenida de vuelta, ${email.split('@')[0]}!`);
+              }}
+              onBackToApp={() => navigate('/dashboard')}
+            />
           }
-          setCurrentScreen(screen);
-        }}
-        isOpenMobile={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-        isLoggedIn={isLoggedIn}
-        onOpenLogin={() => setCurrentScreen('login')}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex-1 md:ml-[260px] min-h-screen flex flex-col transition-all">
-        {/* Top Header */}
-        <Header
-          onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          currentScreen={currentScreen}
-          onNavigate={(screen) => setCurrentScreen(screen)}
-          onOpenLogin={() => setCurrentScreen('login')}
-          isLoggedIn={isLoggedIn}
-          onLogout={() => {
-            setIsLoggedIn(false);
-            setCurrentScreen('login');
-          }}
-          onOpenRegistrarVenta={() => handleOpenRegistrarVenta()}
-          currentUser={currentUser}
         />
 
-        {/* Dynamic Screen View */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {currentScreen === 'resumen' && (
-            <ResumenView
-              categories={categories}
-              products={products}
-              movements={movements}
-              onSelectCategory={handleSelectCategory}
-              onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)}
-              onOpenCrearStock={handleOpenCrearStock}
-              onOpenRegistrarVenta={() => handleOpenRegistrarVenta()}
-              onNavigateToLowStock={() => handleNavigateToStockWithStatus('bajo', 'Todas')}
-              onNavigateToOutOfStock={() => handleNavigateToStockWithStatus('agotado', 'Todas')}
-              onSelectCategoryWithFilter={(catName, filter) => handleNavigateToStockWithStatus(filter, catName)}
-              onExport={handleExport}
-            />
-          )}
+        {/* ENRUTAMIENTO PROTEGIDO (ProtectedRoute): Bloquea si no hay sesión */}
+        <Route element={<ProtectedRoute />}>
+          {/* Main Layout Wrapper con Sidebar, Header y Modals */}
+          <Route
+            element={
+              <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex font-body selection:bg-[#42308f]/20 selection:text-[#42308f]">
+                {/* Sidebar Navigation */}
+                <Sidebar
+                  currentScreen={currentScreen}
+                  onNavigate={(screen) => {
+                    if (screen === 'stock' && currentScreen !== 'stock') {
+                      setStockStatusFilter('all');
+                    }
+                    const routeMap: Record<NavScreen, string> = {
+                      resumen: '/dashboard',
+                      stock: '/stock',
+                      productos: '/productos',
+                      movimientos: '/movimientos',
+                      reservas: '/reservas',
+                      promociones: '/promociones',
+                      proveedores: '/proveedores',
+                      configuracion: '/configuracion',
+                      login: '/login',
+                    };
+                    navigate(routeMap[screen] || '/dashboard');
+                  }}
+                  isOpenMobile={isMobileSidebarOpen}
+                  onCloseMobile={() => setIsMobileSidebarOpen(false)}
+                  isLoggedIn={true}
+                  onOpenLogin={() => navigate('/login')}
+                />
 
-          {currentScreen === 'stock' && (
-            <StockDetailView
-              products={products}
-              categories={categories}
-              selectedCategory={selectedCategory}
-              promotions={promotions}
-              initialStatusFilter={stockStatusFilter}
-              onStatusFilterChange={setStockStatusFilter}
-              onNavigateToCategory={(cat) => setSelectedCategory(cat)}
-              onNavigateToResumen={() => setCurrentScreen('resumen')}
-              onOpenCrearStock={handleOpenCrearStock}
-              onOpenCargarProducto={(cat, prod) => {
-                if (prod) {
-                  handleOpenCargarProducto(cat, prod, 'nuevo');
-                } else {
-                  handleOpenCargarProducto(cat, null, 'reponer');
-                }
-              }}
-              onQuickReplenish={handleQuickReplenish}
-              onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)}
-              onOpenReserva={handleOpenNuevaReserva}
-              onEditStock={(p) => {
-                if (p) {
-                  handleOpenCargarProducto(p.category, p, 'nuevo');
-                } else {
-                  handleOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : 'Buzos', null, 'reponer');
-                }
-              }}
-              onExport={handleExport}
-              onUpdateProductStock={handleUpdateProductStock}
-              onDeleteProduct={handleDeleteProduct}
-            />
-          )}
+                {/* Main Content Area */}
+                <div className="flex-1 md:ml-[270px] min-h-screen flex flex-col transition-all">
+                  {/* Top Header */}
+                  <Header
+                    onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    currentScreen={currentScreen}
+                    onNavigate={(screen) => {
+                      const routeMap: Record<NavScreen, string> = {
+                        resumen: '/dashboard',
+                        stock: '/stock',
+                        productos: '/productos',
+                        movimientos: '/movimientos',
+                        reservas: '/reservas',
+                        promociones: '/promociones',
+                        proveedores: '/proveedores',
+                        configuracion: '/configuracion',
+                        login: '/login',
+                      };
+                      navigate(routeMap[screen] || '/dashboard');
+                    }}
+                    onOpenLogin={() => navigate('/login')}
+                    isLoggedIn={true}
+                    onLogout={async () => {
+                      await logout();
+                      navigate('/login');
+                    }}
+                    onOpenRegistrarVenta={() => handleOpenRegistrarVenta()}
+                    currentUser={currentUser}
+                  />
 
-          {currentScreen === 'productos' && (
-            <ProductosView
-              products={products}
-              onSelectProduct={(p) => {
-                setSelectedCategory(p.category);
-                setEditingProduct(p);
-              }}
-              onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)}
-              onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)}
-              onDeleteProduct={handleDeleteProduct}
-            />
-          )}
+                  {/* Dynamic Routed View */}
+                  <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+                    <Outlet />
+                  </main>
+                </div>
 
-          {currentScreen === 'movimientos' && (
-            <MovimientosView movements={movements} />
-          )}
+                {/* Nuevo Ingreso Modal */}
+                <NuevoIngresoModal
+                  isOpen={isNuevoIngresoOpen}
+                  onClose={() => setIsNuevoIngresoOpen(false)}
+                  products={products}
+                  categories={categories.map((c) => c.name)}
+                  onAddStock={handleAddStock}
+                />
 
-          {currentScreen === 'reservas' && (
-            <ReservasView
-              reservas={reservas}
-              products={products}
-              onOpenNuevaReserva={() => handleOpenNuevaReserva()}
-              onMarcarRetirada={handleMarkReservaRetired}
-              onEliminarReserva={handleDeleteReserva}
-              onEliminarCaducadas={handleClearCaducadas}
-              onNavigateToStock={() => setCurrentScreen('stock')}
-            />
-          )}
+                {/* Crear Stock Modal */}
+                <CrearStockModal
+                  isOpen={isCrearStockOpen}
+                  onClose={() => setIsCrearStockOpen(false)}
+                  existingCategoryNames={categories.map((c) => c.name)}
+                  onCreateStock={handleCreateStock}
+                />
 
-          {currentScreen === 'proveedores' && (
-            <ProveedoresView
-              suppliers={suppliers}
-              onAddSupplier={handleAddSupplier}
-              onEditSupplier={handleEditSupplier}
-              onDeleteSupplier={handleDeleteSupplier}
-            />
-          )}
+                {/* Cargar Producto / Reponer Stock Modal */}
+                <CargarProductoModal
+                  isOpen={isCargarProductoOpen}
+                  onClose={() => {
+                    setIsCargarProductoOpen(false);
+                    setCargarProductToEdit(null);
+                    setProductToReplenish(null);
+                  }}
+                  products={products}
+                  categories={categories.map((c) => c.name)}
+                  defaultCategory={categoryForCargar || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos')}
+                  onSaveProduct={handleSaveCargarProducto}
+                  onSaveBatchProducts={handleSaveBatchProducts}
+                  onReplenishProduct={handleReplenishStock}
+                  productToEdit={cargarProductToEdit}
+                  productToReplenish={productToReplenish}
+                  initialMode={cargarModalInitialMode}
+                  onCreateCategory={handleCreateCategoryInline}
+                />
 
-          {currentScreen === 'configuracion' && (
-            <ConfiguracionView
-              users={users}
-              currentUser={currentUser}
-              onSwitchUser={handleSwitchUser}
-              onUpdateUserRole={handleUpdateUserRole}
-              onAddUser={handleAddUser}
-              onDeleteUser={handleDeleteUser}
-              onClearAllTestData={handleClearAllTestData}
-              onRestoreTestData={handleRestoreTestData}
-            />
-          )}
+                {/* Registrar Venta Modal (Melina Gomez) */}
+                <RegistrarVentaModal
+                  isOpen={isRegistrarVentaOpen}
+                  onClose={() => {
+                    setIsRegistrarVentaOpen(false);
+                    setProductForVenta(null);
+                  }}
+                  products={products}
+                  promotions={promotions}
+                  initialProduct={productForVenta}
+                  onConfirmSale={handleConfirmSale}
+                />
 
-          {currentScreen === 'promociones' && (
-            <PromocionesView
-              promotions={promotions}
-              products={products}
-              onCreatePromotion={() => {
-                setEditingPromotion(null);
-                setIsPromotionModalOpen(true);
-              }}
-              onEditPromotion={(promo) => {
-                setEditingPromotion(promo);
-                setIsPromotionModalOpen(true);
-              }}
-              onDeletePromotion={(promo) => setDeletingPromotion(promo)}
-              onToggleStatus={handleTogglePromotionStatus}
-              onNavigateToStock={() => setCurrentScreen('stock')}
-              onSelectProductForStock={(category, sku) => {
-                if (category && category !== 'Todas') {
-                  setSelectedCategory(category);
-                }
-                setCurrentScreen('stock');
-                if (sku) {
-                  const targetProd = products.find((p) => p.sku === sku);
-                  if (targetProd) {
-                    setEditingProduct(targetProd);
+                {/* Editar Stock Modal */}
+                <EditarStockModal
+                  isOpen={Boolean(editingProduct)}
+                  onClose={() => setEditingProduct(null)}
+                  product={editingProduct}
+                  onSaveProduct={handleSaveProduct}
+                />
+
+                {/* Promocion Modal (Crear / Modificar) */}
+                <PromocionModal
+                  isOpen={isPromotionModalOpen}
+                  onClose={() => {
+                    setIsPromotionModalOpen(false);
+                    setEditingPromotion(null);
+                  }}
+                  onSave={handleSavePromotion}
+                  promotionToEdit={editingPromotion}
+                  products={products}
+                />
+
+                {/* Nueva Reserva Modal */}
+                <NuevaReservaModal
+                  isOpen={isNuevaReservaOpen}
+                  onClose={() => {
+                    setIsNuevaReservaOpen(false);
+                    setProductForReserva(null);
+                  }}
+                  products={products}
+                  onCreateReserva={handleCreateReserva}
+                  initialProduct={productForReserva}
+                />
+
+                {/* Confirmar Eliminación Modal */}
+                <ConfirmDeleteModal
+                  isOpen={Boolean(deletingPromotion)}
+                  onClose={() => setDeletingPromotion(null)}
+                  onConfirm={handleDeletePromotionConfirm}
+                  title="Eliminar Promoción"
+                  itemName={deletingPromotion?.title || ''}
+                  itemDetail={
+                    deletingPromotion
+                      ? `Beneficio: ${
+                          deletingPromotion.discountType === 'porcentaje'
+                            ? `${deletingPromotion.discountValue}% OFF`
+                            : deletingPromotion.discountType === 'monto_fijo'
+                            ? `$${deletingPromotion.discountValue.toLocaleString('es-AR')} OFF`
+                            : '2x1'
+                        } • Días: ${deletingPromotion.dayOfWeek || 'Sábados'}`
+                      : undefined
                   }
+                />
+
+                {/* Global Action Toast Notification */}
+                {toastMessage && (
+                  <div className="fixed bottom-6 right-6 z-50 bg-[#0b1c30] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <span className="text-xs font-semibold">{toastMessage}</span>
+                  </div>
+                )}
+              </div>
+            }
+          >
+            {/* ESCALÓN 1: Rutas accesibles por todos los roles ['developer', 'admin', 'vendedora'] */}
+            <Route element={<RoleRoute allowedRoles={['developer', 'admin', 'vendedora']} />}>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ResumenView
+                    categories={categories}
+                    products={products}
+                    movements={movements}
+                    onSelectCategory={handleSelectCategory}
+                    onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)}
+                    onOpenCrearStock={handleOpenCrearStock}
+                    onOpenRegistrarVenta={() => handleOpenRegistrarVenta()}
+                    onNavigateToLowStock={() => handleNavigateToStockWithStatus('bajo', 'Todas')}
+                    onNavigateToOutOfStock={() => handleNavigateToStockWithStatus('agotado', 'Todas')}
+                    onSelectCategoryWithFilter={(catName, filter) => handleNavigateToStockWithStatus(filter, catName)}
+                    onExport={handleExport}
+                  />
                 }
-              }}
-            />
-          )}
-        </main>
-      </div>
+              />
+              <Route
+                path="/stock"
+                element={
+                  <StockDetailView
+                    products={products}
+                    categories={categories}
+                    selectedCategory={selectedCategory}
+                    promotions={promotions}
+                    initialStatusFilter={stockStatusFilter}
+                    onStatusFilterChange={setStockStatusFilter}
+                    onNavigateToCategory={(cat) => setSelectedCategory(cat)}
+                    onNavigateToResumen={() => navigate('/dashboard')}
+                    onOpenCrearStock={handleOpenCrearStock}
+                    onOpenCargarProducto={(cat, prod) => {
+                      if (prod) {
+                        handleOpenCargarProducto(cat, prod, 'nuevo');
+                      } else {
+                        handleOpenCargarProducto(cat, null, 'reponer');
+                      }
+                    }}
+                    onQuickReplenish={handleQuickReplenish}
+                    onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)}
+                    onOpenReserva={handleOpenNuevaReserva}
+                    onEditStock={(p) => {
+                      if (p) {
+                        handleOpenCargarProducto(p.category, p, 'nuevo');
+                      } else {
+                        handleOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : 'Buzos', null, 'reponer');
+                      }
+                    }}
+                    onExport={handleExport}
+                    onUpdateProductStock={handleUpdateProductStock}
+                    onDeleteProduct={handleDeleteProduct}
+                  />
+                }
+              />
+              <Route
+                path="/productos"
+                element={
+                  <ProductosView
+                    products={products}
+                    onSelectProduct={(p) => {
+                      setSelectedCategory(p.category);
+                      setEditingProduct(p);
+                      navigate('/stock');
+                    }}
+                    onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)}
+                    onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)}
+                    onDeleteProduct={handleDeleteProduct}
+                  />
+                }
+              />
+              <Route path="/movimientos" element={<MovimientosView movements={movements} />} />
+              <Route
+                path="/reservas"
+                element={
+                  <ReservasView
+                    reservas={reservas}
+                    products={products}
+                    onOpenNuevaReserva={() => handleOpenNuevaReserva()}
+                    onMarcarRetirada={handleMarkReservaRetired}
+                    onEliminarReserva={handleDeleteReserva}
+                    onEliminarCaducadas={handleClearCaducadas}
+                    onNavigateToStock={() => navigate('/stock')}
+                  />
+                }
+              />
+              <Route
+                path="/promociones"
+                element={
+                  <PromocionesView
+                    promotions={promotions}
+                    products={products}
+                    onCreatePromotion={() => {
+                      setEditingPromotion(null);
+                      setIsPromotionModalOpen(true);
+                    }}
+                    onEditPromotion={(promo) => {
+                      setEditingPromotion(promo);
+                      setIsPromotionModalOpen(true);
+                    }}
+                    onDeletePromotion={(promo) => setDeletingPromotion(promo)}
+                    onToggleStatus={handleTogglePromotionStatus}
+                    onNavigateToStock={() => navigate('/stock')}
+                    onSelectProductForStock={(category, sku) => {
+                      if (category && category !== 'Todas') {
+                        setSelectedCategory(category);
+                      }
+                      navigate('/stock');
+                      if (sku) {
+                        const targetProd = products.find((p) => p.sku === sku);
+                        if (targetProd) {
+                          setEditingProduct(targetProd);
+                        }
+                      }
+                    }}
+                  />
+                }
+              />
+              <Route
+                path="/proveedores"
+                element={
+                  <ProveedoresView
+                    suppliers={suppliers}
+                    onAddSupplier={handleAddSupplier}
+                    onEditSupplier={handleEditSupplier}
+                    onDeleteSupplier={handleDeleteSupplier}
+                  />
+                }
+              />
+              <Route
+                path="/configuracion"
+                element={
+                  <ConfiguracionView
+                    users={users}
+                    currentUser={currentUser}
+                    onSwitchUser={handleSwitchUser}
+                    onUpdateUserRole={handleUpdateUserRole}
+                    onAddUser={handleAddUser}
+                    onDeleteUser={handleDeleteUser}
+                    onClearAllTestData={handleClearAllTestData}
+                    onRestoreTestData={handleRestoreTestData}
+                  />
+                }
+              />
+            </Route>
 
-      {/* Nuevo Ingreso Modal */}
-      <NuevoIngresoModal
-        isOpen={isNuevoIngresoOpen}
-        onClose={() => setIsNuevoIngresoOpen(false)}
-        products={products}
-        categories={categories.map((c) => c.name)}
-        onAddStock={handleAddStock}
-      />
+            {/* ESCALÓN 2: RUTA /reportes-ventas permitida para ['developer', 'admin'] */}
+            <Route element={<RoleRoute allowedRoles={['developer', 'admin']} />}>
+              <Route path="/reportes-ventas" element={<ReportesVentasView />} />
+            </Route>
 
-      {/* Crear Stock Modal */}
-      <CrearStockModal
-        isOpen={isCrearStockOpen}
-        onClose={() => setIsCrearStockOpen(false)}
-        existingCategoryNames={categories.map((c) => c.name)}
-        onCreateStock={handleCreateStock}
-      />
+            {/* ESCALÓN 3: RUTA /configuracion-sistema solo permitida para ['developer'] */}
+            <Route element={<RoleRoute allowedRoles={['developer']} />}>
+              <Route
+                path="/configuracion-sistema"
+                element={
+                  <ConfiguracionSistemaView
+                    onClearDatabase={handleClearAllTestData}
+                    onRestoreDatabase={handleRestoreTestData}
+                  />
+                }
+              />
+            </Route>
+          </Route>
+        </Route>
 
-      {/* Cargar Producto / Reponer Stock Modal */}
-      <CargarProductoModal
-        isOpen={isCargarProductoOpen}
-        onClose={() => {
-          setIsCargarProductoOpen(false);
-          setCargarProductToEdit(null);
-          setProductToReplenish(null);
-        }}
-        products={products}
-        categories={categories.map((c) => c.name)}
-        defaultCategory={categoryForCargar || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos')}
-        onSaveProduct={handleSaveCargarProducto}
-        onSaveBatchProducts={handleSaveBatchProducts}
-        onReplenishProduct={handleReplenishStock}
-        productToEdit={cargarProductToEdit}
-        productToReplenish={productToReplenish}
-        initialMode={cargarModalInitialMode}
-        onCreateCategory={handleCreateCategoryInline}
-      />
-
-      {/* Registrar Venta Modal (Melina Gomez) */}
-      <RegistrarVentaModal
-        isOpen={isRegistrarVentaOpen}
-        onClose={() => {
-          setIsRegistrarVentaOpen(false);
-          setProductForVenta(null);
-        }}
-        products={products}
-        promotions={promotions}
-        initialProduct={productForVenta}
-        onConfirmSale={handleConfirmSale}
-      />
-
-      {/* Editar Stock Modal */}
-      <EditarStockModal
-        isOpen={Boolean(editingProduct)}
-        onClose={() => setEditingProduct(null)}
-        product={editingProduct}
-        onSaveProduct={handleSaveProduct}
-      />
-
-      {/* Promocion Modal (Crear / Modificar) */}
-      <PromocionModal
-        isOpen={isPromotionModalOpen}
-        onClose={() => {
-          setIsPromotionModalOpen(false);
-          setEditingPromotion(null);
-        }}
-        onSave={handleSavePromotion}
-        promotionToEdit={editingPromotion}
-        products={products}
-      />
-
-      {/* Nueva Reserva Modal */}
-      <NuevaReservaModal
-        isOpen={isNuevaReservaOpen}
-        onClose={() => {
-          setIsNuevaReservaOpen(false);
-          setProductForReserva(null);
-        }}
-        products={products}
-        onCreateReserva={handleCreateReserva}
-        initialProduct={productForReserva}
-      />
-
-      {/* Confirmar Eliminación Modal */}
-      <ConfirmDeleteModal
-        isOpen={Boolean(deletingPromotion)}
-        onClose={() => setDeletingPromotion(null)}
-        onConfirm={handleDeletePromotionConfirm}
-        title="Eliminar Promoción"
-        itemName={deletingPromotion?.title || ''}
-        itemDetail={
-          deletingPromotion
-            ? `Beneficio: ${
-                deletingPromotion.discountType === 'porcentaje'
-                  ? `${deletingPromotion.discountValue}% OFF`
-                  : deletingPromotion.discountType === 'monto_fijo'
-                  ? `$${deletingPromotion.discountValue.toLocaleString('es-AR')} OFF`
-                  : '2x1'
-              } • Días: ${deletingPromotion.dayOfWeek || 'Sábados'}`
-            : undefined
-        }
-      />
-
-      {/* Global Action Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0b1c30] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold">{toastMessage}</span>
-        </div>
-      )}
-    </div>
+        {/* Wildcard de seguridad */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </>
   );
 }

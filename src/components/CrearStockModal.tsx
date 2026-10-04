@@ -12,6 +12,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { CategorySummary, ProductItem } from '../types';
+import { MAIN_COLOR_FAMILIES } from '../utils/colors';
 
 interface CrearStockModalProps {
   isOpen: boolean;
@@ -28,17 +29,6 @@ const AVAILABLE_ICONS = [
   { id: 'dress', label: 'Vestido / Gala' },
   { id: 'shoes', label: 'Calzado / Zapatos' },
   { id: 'sparkles', label: 'Accesorios / Especial' },
-];
-
-const PRESET_COLORS = [
-  { name: 'Negro', hex: '#18181b' },
-  { name: 'Blanco', hex: '#ffffff' },
-  { name: 'Azul Marino', hex: '#1e3a8a' },
-  { name: 'Rojo', hex: '#ef4444' },
-  { name: 'Beige', hex: '#d4b996' },
-  { name: 'Gris', hex: '#6b7280' },
-  { name: 'Verde Oliva', hex: '#4d7c0f' },
-  { name: 'Rosa Pastel', hex: '#f472b6' },
 ];
 
 export const CrearStockModal: React.FC<CrearStockModalProps> = ({
@@ -59,7 +49,8 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
   const [prodSku, setProdSku] = useState('#501');
   const [prodSize, setProdSize] = useState('M');
   const [prodSeason, setProdSeason] = useState('Invierno');
-  const [prodColorName, setProdColorName] = useState('Negro');
+  const [prodColorFamily, setProdColorFamily] = useState('Negro');
+  const [prodSpecificColor, setProdSpecificColor] = useState('');
   const [prodColorHex, setProdColorHex] = useState('#18181b');
   const [prodStock, setProdStock] = useState<number>(30);
   const [prodPrice, setProdPrice] = useState<number>(32000);
@@ -78,7 +69,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
   };
 
   const handleSelectColor = (color: { name: string; hex: string }) => {
-    setProdColorName(color.name);
+    setProdColorFamily(color.name);
     setProdColorHex(color.hex);
   };
 
@@ -112,7 +103,9 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
         name: prodName.trim(),
         description: `Ingreso inicial en stock ${trimmedName}`,
         category: trimmedName,
-        colorName: prodColorName,
+        colorName: prodSpecificColor.trim() || prodColorFamily,
+        colorFamily: prodColorFamily,
+        specificColor: prodSpecificColor.trim() || undefined,
         colorHex: prodColorHex,
         size: prodSize,
         season: prodSeason,
@@ -334,32 +327,34 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                   </div>
                 </div>
 
-                {/* Color Seleccionable */}
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                    Color: <span className="font-extrabold text-[#42308f]">{prodColorName}</span>
-                  </label>
+                {/* Color Seleccionable: Familia y Color Comercial */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-gray-700">
+                      Familia de Color Principal: <span className="font-extrabold text-[#42308f]">{prodColorFamily}</span>
+                    </label>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                    {PRESET_COLORS.map((col) => (
+                    {MAIN_COLOR_FAMILIES.map((col) => (
                       <button
                         key={col.name}
                         type="button"
                         onClick={() => handleSelectColor(col)}
                         title={col.name}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                          prodColorName === col.name
-                            ? 'ring-2 ring-offset-2 ring-[#42308f] scale-110'
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                          prodColorFamily === col.name
+                            ? 'ring-2 ring-offset-2 ring-[#42308f] scale-110 shadow-xs'
                             : 'hover:scale-105 opacity-90'
                         }`}
                         style={{
                           backgroundColor: col.hex,
-                          border: col.hex === '#ffffff' ? '1px solid #d1d5db' : 'none',
+                          border: col.hasBorder ? '1px solid #d1d5db' : 'none',
                         }}
                       >
-                        {prodColorName === col.name && (
+                        {prodColorFamily === col.name && (
                           <Check
                             className={`w-3.5 h-3.5 ${
-                              col.hex === '#ffffff' || col.hex === '#d4b996'
+                              col.name === 'Blanco' || col.name === 'Amarillo' || col.name === 'Celeste'
                                 ? 'text-gray-900'
                                 : 'text-white'
                             }`}
@@ -367,6 +362,22 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                         )}
                       </button>
                     ))}
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      Color Específico o Comercial (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={`Ej. ${prodColorFamily === 'Rojo' ? 'Bordó, Rojo Cherry...' : prodColorFamily === 'Marrón' ? 'Marrón Oscuro, Chocolate...' : 'Tono comercial de la boutique...'}`}
+                      value={prodSpecificColor}
+                      onChange={(e) => setProdSpecificColor(e.target.value)}
+                      className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
+                    />
+                    <span className="text-[10px] text-gray-500 mt-0.5 block">
+                      Especifica el tono boutique para etiquetas y búsqueda (ej. si elegiste Rojo, podés detallar &quot;Bordó&quot;).
+                    </span>
                   </div>
                 </div>
 

@@ -24,6 +24,11 @@ import {
 } from 'lucide-react';
 import { ProductItem, Promotion, CategorySummary } from '../types';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import {
+  MAIN_COLOR_FAMILIES,
+  matchesColorFamily,
+  getProductColorDisplay,
+} from '../utils/colors';
 
 interface StockDetailViewProps {
   products: ProductItem[];
@@ -142,7 +147,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
       }
       if (sizeFilter && item.size !== sizeFilter) return false;
       if (seasonFilter && item.season !== seasonFilter) return false;
-      if (colorFilter && item.colorName !== colorFilter) return false;
+      if (colorFilter && !matchesColorFamily(item, colorFilter)) return false;
 
       // Status filter
       if (statusFilter === 'bajo') {
@@ -162,9 +167,12 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           item.name.toLowerCase().includes(q) ||
           item.sku.toLowerCase().includes(q) ||
           item.colorName.toLowerCase().includes(q) ||
+          (item.specificColor && item.specificColor.toLowerCase().includes(q)) ||
+          (item.colorFamily && item.colorFamily.toLowerCase().includes(q)) ||
           item.locationFacility.toLowerCase().includes(q)
         );
       }
+
       return true;
     });
   }, [products, selectedCategory, sizeFilter, seasonFilter, colorFilter, statusFilter, tableSearch]);
@@ -625,41 +633,52 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           {/* SELECTOR DE COLOR */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-gray-700">Color:</span>
+              <span className="font-bold text-gray-700">Familia de Color:</span>
               <span className="text-[#42308f] font-extrabold">{colorFilter || 'Todos'}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setColorFilter(null)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   colorFilter === null
                     ? 'bg-[#42308f] text-white shadow-xs'
                     : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
                 }`}
               >
-                Todos
+                Todos ({scopedProducts.length})
               </button>
-              {availableColors.map((col) => (
-                <button
-                  key={col.name}
-                  onClick={() => setColorFilter(colorFilter === col.name ? null : col.name)}
-                  title={col.name}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all ${
-                    colorFilter === col.name
-                      ? 'bg-[#eff4ff] text-[#42308f] ring-2 ring-[#42308f]'
-                      : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
-                  }`}
-                >
-                  <span
-                    className="w-3 h-3 rounded-full shadow-2xs shrink-0"
-                    style={{
-                      backgroundColor: col.hex,
-                      border: col.hex === '#ffffff' ? '1px solid #d1d5db' : 'none',
-                    }}
-                  />
-                  <span>{col.name}</span>
-                </button>
-              ))}
+              {MAIN_COLOR_FAMILIES.map((col) => {
+                const isSelected = colorFilter === col.name;
+                const count = scopedProducts.filter((p) => matchesColorFamily(p, col.name)).length;
+                return (
+                  <button
+                    key={col.name}
+                    onClick={() => setColorFilter(isSelected ? null : col.name)}
+                    title={`Filtrar por familia ${col.name} (${count} prendas)`}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#42308f] text-white shadow-xs ring-2 ring-[#42308f]/20'
+                        : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    <span
+                      className="w-3.5 h-3.5 rounded-full shadow-2xs shrink-0"
+                      style={{
+                        backgroundColor: col.hex,
+                        border: col.hasBorder ? '1px solid #d1d5db' : 'none',
+                      }}
+                    />
+                    <span>{col.name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-gray-200/80 text-gray-600'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -833,22 +852,34 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
 
                       {/* COLOR */}
                       <td className="px-6 py-4">
-                        <div
-                          className="inline-flex items-center gap-2 cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setColorFilter(prod.colorName);
-                          }}
-                          title={`Filtrar por color ${prod.colorName}`}
-                        >
-                          <span
-                            className="w-4 h-4 rounded-full inline-block shadow-xs shrink-0 ring-1 ring-black/10"
-                            style={{ backgroundColor: prod.colorHex }}
-                          />
-                          <span className="text-xs font-semibold text-gray-700 group-hover:text-[#42308f]">
-                            {prod.colorName}
-                          </span>
-                        </div>
+                        {(() => {
+                          const colDisplay = getProductColorDisplay(prod);
+                          return (
+                            <div
+                              className="inline-flex items-center gap-2 cursor-pointer group/color"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setColorFilter(colDisplay.family);
+                              }}
+                              title={colDisplay.tooltipText}
+                            >
+                              <span
+                                className="w-4 h-4 rounded-full inline-block shadow-xs shrink-0 ring-1 ring-black/10"
+                                style={{ backgroundColor: prod.colorHex }}
+                              />
+                              <div>
+                                <span className="text-xs font-semibold text-gray-800 group-hover:text-[#42308f] block">
+                                  {colDisplay.primary}
+                                </span>
+                                {colDisplay.hasSpecific && (
+                                  <span className="text-[10px] text-gray-500 font-normal block">
+                                    Fam. {colDisplay.family}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* TEMPORADA */}
@@ -1011,9 +1042,9 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           </span>
                         )}
                         <span
-                          className="w-4 h-4 rounded-full shadow-2xs ring-1 ring-black/10"
+                          className="w-4 h-4 rounded-full shadow-2xs ring-1 ring-black/10 shrink-0"
                           style={{ backgroundColor: prod.colorHex }}
-                          title={prod.colorName}
+                          title={getProductColorDisplay(prod).tooltipText}
                         />
                         {onDeleteProduct && (
                           <button
@@ -1045,8 +1076,11 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                       <span className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-xs font-medium text-[#5e5d69]">
                         {prod.season}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-xs font-medium text-[#5e5d69]">
-                        {prod.colorName}
+                      <span
+                        className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-xs font-medium text-[#5e5d69]"
+                        title={getProductColorDisplay(prod).tooltipText}
+                      >
+                        {getProductColorDisplay(prod).primary}
                       </span>
                     </div>
                   </div>

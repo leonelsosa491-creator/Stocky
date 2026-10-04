@@ -6,6 +6,7 @@ import {
   ReservaItem,
   Supplier,
   AppUser,
+  Role,
 } from '../types';
 import {
   INITIAL_CATEGORIES,
@@ -129,7 +130,32 @@ export function loadInitialAppData(): AppStoredData {
   }
 
   // Already initialized: strictly read what the user left stored
-  const products = safeParse<ProductItem[]>(safeGet(STORAGE_KEYS.PRODUCTS), []);
+  const productsRaw = safeParse<ProductItem[]>(safeGet(STORAGE_KEYS.PRODUCTS), []);
+  const products = productsRaw.map((p) => {
+    if (!p.colorFamily) {
+      let family = p.colorName || 'Negro';
+      const lower = family.toLowerCase();
+      if (lower.includes('beige')) family = 'Beige';
+      else if (lower.includes('rojo') || lower.includes('bordo') || lower.includes('cherry')) family = 'Rojo';
+      else if (lower.includes('azul') || lower.includes('navy')) family = 'Azul';
+      else if (lower.includes('celeste')) family = 'Celeste';
+      else if (lower.includes('naranja') || lower.includes('terracota')) family = 'Naranja';
+      else if (lower.includes('amarillo') || lower.includes('mostaza')) family = 'Amarillo';
+      else if (lower.includes('violeta') || lower.includes('lila')) family = 'Violeta';
+      else if (lower.includes('rosa') || lower.includes('fucsia')) family = 'Rosado';
+      else if (lower.includes('marrón') || lower.includes('marron') || lower.includes('chocolate')) family = 'Marrón';
+      else if (lower.includes('gris')) family = 'Gris';
+      else if (lower.includes('negro')) family = 'Negro';
+      else if (lower.includes('blanco')) family = 'Blanco';
+
+      return {
+        ...p,
+        colorFamily: family,
+        specificColor: p.specificColor || p.colorName,
+      };
+    }
+    return p;
+  });
   const categoriesBase = safeParse<CategorySummary[]>(
     safeGet(STORAGE_KEYS.CATEGORIES),
     INITIAL_CATEGORIES
@@ -138,8 +164,24 @@ export function loadInitialAppData(): AppStoredData {
   const promotions = safeParse<Promotion[]>(safeGet(STORAGE_KEYS.PROMOTIONS), []);
   const reservas = safeParse<ReservaItem[]>(safeGet(STORAGE_KEYS.RESERVAS), []);
   const suppliers = safeParse<Supplier[]>(safeGet(STORAGE_KEYS.SUPPLIERS), []);
-  const users = safeParse<AppUser[]>(safeGet(STORAGE_KEYS.USERS), INITIAL_USERS);
-  const currentUser = safeParse<AppUser>(safeGet(STORAGE_KEYS.CURRENT_USER), users[0] || INITIAL_USERS[0]);
+  const rawUsers = safeParse<AppUser[]>(safeGet(STORAGE_KEYS.USERS), INITIAL_USERS);
+  const users = rawUsers.map((u) => {
+    let role: Role = u.role as Role;
+    const roleStr = String(u.role);
+    if (roleStr === 'administrador') role = 'admin';
+    else if (roleStr === 'usuario normal') role = 'vendedora';
+    else if (roleStr === 'desarrollador') role = 'developer';
+    else if (roleStr !== 'admin' && roleStr !== 'developer' && roleStr !== 'vendedora') role = 'admin';
+    return { ...u, role };
+  });
+  const rawCurrentUser = safeParse<AppUser>(safeGet(STORAGE_KEYS.CURRENT_USER), users[0] || INITIAL_USERS[0]);
+  let currentRole: Role = rawCurrentUser.role as Role;
+  const currRoleStr = String(rawCurrentUser.role);
+  if (currRoleStr === 'administrador') currentRole = 'admin';
+  else if (currRoleStr === 'usuario normal') currentRole = 'vendedora';
+  else if (currRoleStr === 'desarrollador') currentRole = 'developer';
+  else if (currRoleStr !== 'admin' && currRoleStr !== 'developer' && currRoleStr !== 'vendedora') currentRole = 'admin';
+  const currentUser = { ...rawCurrentUser, role: currentRole };
 
   return {
     products,

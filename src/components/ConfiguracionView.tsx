@@ -19,8 +19,10 @@ import {
   AlertTriangle,
   RotateCcw,
 } from 'lucide-react';
-import { AppUser, UserRole } from '../types';
+import { AppUser, UserRole, Role } from '../types';
 import { loadStoreSettings, saveStoreSettings } from '../utils/storage';
+import { Can } from './auth/Can';
+import { useAuth } from '../context/AuthContext';
 
 interface ConfiguracionViewProps {
   users: AppUser[];
@@ -57,7 +59,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('usuario normal');
+  const [newUserRole, setNewUserRole] = useState<UserRole>('vendedora');
   const [userError, setUserError] = useState<string | null>(null);
 
   const handleSave = (e: React.FormEvent) => {
@@ -100,25 +102,25 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
-      case 'administrador':
+      case 'admin':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#eff4ff] text-[#42308f] border border-[#42308f]/20 uppercase">
             <ShieldCheck className="w-3 h-3 text-[#42308f]" />
-            Administrador
+            Dueña (Admin)
           </span>
         );
-      case 'usuario normal':
+      case 'vendedora':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase">
-            <User className="w-3 h-3 text-emerald-600" />
-            Usuario Normal
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-800 border border-indigo-200 uppercase">
+            <User className="w-3 h-3 text-indigo-600" />
+            Vendedora (Empleada)
           </span>
         );
-      case 'desarrollador':
+      case 'developer':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-900 border border-amber-300 uppercase">
-            <Code className="w-3 h-3 text-amber-600" />
-            Desarrollador
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-900 border border-rose-300 uppercase">
+            <Code className="w-3 h-3 text-rose-600" />
+            SuperAdmin (Developer)
           </span>
         );
       default:
@@ -265,9 +267,9 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                       onChange={(e) => onUpdateUserRole(u.id, e.target.value as UserRole)}
                       className="text-xs font-bold px-2.5 py-1.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#42308f]"
                     >
-                      <option value="administrador">Administrador</option>
-                      <option value="usuario normal">Usuario Normal</option>
-                      <option value="desarrollador">Desarrollador</option>
+                      <option value="admin">Dueña (Admin)</option>
+                      <option value="vendedora">Vendedora (Empleada)</option>
+                      <option value="developer">Desarrollador (SuperAdmin)</option>
                     </select>
                   </div>
 
@@ -409,61 +411,90 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
         </div>
       </form>
 
-      {/* SECCIÓN 4: ZONA DE PRUEBAS / DEPURACIÓN */}
-      <div className="bg-rose-50/40 rounded-3xl p-6 sm:p-8 border border-rose-200/80 card-shadow space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-rose-200/60">
-          <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
-            <Trash2 className="w-5 h-5" />
+      {/* SECCIÓN 4: ZONA DE PRUEBAS / DEPURACIÓN (Solo visible y ejecutable por Developer) */}
+      <Can
+        role="developer"
+        fallback={
+          <div className="bg-gray-50 rounded-3xl p-6 sm:p-8 border border-gray-200 card-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gray-200 text-gray-500 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-bold text-sm text-gray-800">
+                  Operaciones Críticas de Base de Datos
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  El vaciado general de datos está restringido al rol <strong>'developer' (SuperAdmin)</strong> para prevenir pérdidas accidentales.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-extrabold uppercase bg-gray-200 text-gray-600 px-3 py-1 rounded-full self-start sm:self-auto">
+              Protegido por Rol
+            </span>
           </div>
-          <div>
-            <h3 className="font-heading font-bold text-base text-[#0b1c30]">
-              Zona de Pruebas y Depuración (Testing)
-            </h3>
-            <p className="text-xs text-[#797583]">
-              Herramientas para vaciar el sistema o reiniciar el entorno de pruebas
-            </p>
+        }
+      >
+        <div className="bg-rose-50/40 rounded-3xl p-6 sm:p-8 border border-rose-200/80 card-shadow space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-rose-200/60">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-bold text-base text-[#0b1c30]">
+                  Zona de Pruebas y Depuración (Testing)
+                </h3>
+                <p className="text-xs text-[#797583]">
+                  Herramientas para vaciar el sistema o reiniciar el entorno de pruebas
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 px-2.5 py-0.5 rounded-full border border-rose-200">
+              Solo Developer
+            </span>
+          </div>
+
+          <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="max-w-xl">
+              <p className="text-xs font-semibold text-rose-950">
+                Eliminar todas las prendas, stock, movimientos, reservas, promociones y proveedores
+              </p>
+              <p className="text-[11px] text-[#5e5d69] mt-1 leading-relaxed">
+                Permite vaciar completamente las tablas para cargar tus propios artículos desde cero o realizar pruebas exhaustivas de stock sin datos preexistentes.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              {onRestoreTestData && (
+                <button
+                  type="button"
+                  id="btn-restaurar-datos-demo"
+                  onClick={onRestoreTestData}
+                  className="px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-full border border-gray-200 transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  title="Restaurar datos demo de prueba originales"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-gray-500" />
+                  <span>Restaurar Demo</span>
+                </button>
+              )}
+
+              {onClearAllTestData && (
+                <button
+                  type="button"
+                  id="btn-eliminar-todos-datos-test"
+                  onClick={() => setIsConfirmClearModalOpen(true)}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-full transition-all shadow-sm flex items-center gap-2 active:scale-95 cursor-pointer"
+                  title="Eliminar todas las prendas, stock, movimientos, reservas, promociones y proveedores"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Eliminar Todo para Testear</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
-
-        <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="max-w-xl">
-            <p className="text-xs font-semibold text-rose-950">
-              Eliminar todas las prendas, stock, movimientos, reservas, promociones y proveedores
-            </p>
-            <p className="text-[11px] text-[#5e5d69] mt-1 leading-relaxed">
-              Permite vaciar completamente las tablas para cargar tus propios artículos desde cero o realizar pruebas exhaustivas de stock sin datos preexistentes.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {onRestoreTestData && (
-              <button
-                type="button"
-                id="btn-restaurar-datos-demo"
-                onClick={onRestoreTestData}
-                className="px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-full border border-gray-200 transition-all shadow-2xs flex items-center gap-1.5"
-                title="Restaurar datos demo de prueba originales"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-gray-500" />
-                <span>Restaurar Demo</span>
-              </button>
-            )}
-
-            {onClearAllTestData && (
-              <button
-                type="button"
-                id="btn-eliminar-todos-datos-test"
-                onClick={() => setIsConfirmClearModalOpen(true)}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-full transition-all shadow-sm flex items-center gap-2 active:scale-95"
-                title="Eliminar todas las prendas, stock, movimientos, reservas, promociones y proveedores"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Eliminar Todo para Testear</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      </Can>
 
       {/* Modal Confirmación de Eliminación Total para Testear */}
       {isConfirmClearModalOpen && (
@@ -601,9 +632,9 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   onChange={(e) => setNewUserRole(e.target.value as UserRole)}
                   className="w-full px-3.5 py-2 text-xs font-bold bg-[#eff4ff] border border-[#42308f]/30 rounded-xl focus:border-[#42308f] focus:outline-none text-[#42308f]"
                 >
-                  <option value="administrador">Administrador (Control total)</option>
-                  <option value="usuario normal">Usuario Normal (Mostrador / Ventas)</option>
-                  <option value="desarrollador">Desarrollador (Técnico / IT)</option>
+                  <option value="admin">Dueña (Admin - Control comercial)</option>
+                  <option value="vendedora">Vendedora (Mostrador / Salón)</option>
+                  <option value="developer">Desarrollador (SuperAdmin / DB)</option>
                 </select>
               </div>
 

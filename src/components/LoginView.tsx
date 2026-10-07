@@ -1,113 +1,201 @@
+import { supabase } from '../supabase/supabaseClient';
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   User,
   Lock,
   Eye,
   EyeOff,
-  LogIn,
   Store,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  KeyRound,
+  Shield,
+  Sparkles,
+  ShoppingBag,
+  Code
 } from 'lucide-react';
+import { useAuth, DEMO_CREDENTIALS } from '../context/AuthContext';
+import { Role } from '../types';
 
 interface LoginViewProps {
-  onLoginSuccess: (email: string) => void;
-  onBackToApp: () => void;
+  onLoginSuccess?: (email: string) => void;
+  onBackToApp?: () => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuccess,
   onBackToApp,
 }) => {
+  const { login, loginWithRole, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirigir a la ruta a la que intentaba acceder o a /dashboard
+  const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
+
   const [email, setEmail] = useState('melina@indumentaria-aries.com');
   const [password, setPassword] = useState('boutique2026');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [requestAccessModal, setRequestAccessModal] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [accessEmail, setAccessEmail] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLoginSuccess(email);
+    setLoginError(null);
+
+    if (!email.trim()) {
+      setLoginError('Por favor ingresa tu correo electrónico corporativo.');
+      return;
+    }
+
+    try {
+      const success = await login(email, password);
+      if (success) {
+        if (onLoginSuccess) {
+          onLoginSuccess(email);
+        }
+        navigate(from, { replace: true });
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      setLoginError(errorMsg);
+    }
+  };
+
+  const handleQuickRoleSelect = async (role: Role) => {
+    const creds = DEMO_CREDENTIALS[role];
+    setEmail(creds.email);
+    setPassword(creds.pass);
+    await loginWithRole(role);
+    if (onLoginSuccess) {
+      onLoginSuccess(creds.email);
+    }
+    navigate(from, { replace: true });
   };
 
   return (
-    <div className="relative w-full h-screen min-h-[650px] bg-[#f8f9ff] flex overflow-hidden font-body">
-      {/* Quick link to return to Dashboard */}
-      <button
-        onClick={onBackToApp}
-        className="absolute top-4 right-4 z-50 inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-md border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] shadow-sm transition-all active:scale-95"
-      >
-        <Store className="w-3.5 h-3.5" />
-        Ir al Panel de Inventario
-      </button>
+    <div className="relative w-full min-h-screen bg-[#f8f9ff] flex overflow-x-hidden font-body">
+      {/* Quick link to return to Dashboard if invoked inside app */}
+      {onBackToApp && (
+        <button
+          onClick={onBackToApp}
+          className="absolute top-4 right-4 z-50 inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-md border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] shadow-sm transition-all active:scale-95"
+        >
+          <Store className="w-3.5 h-3.5" />
+          Ir al Panel de Inventario
+        </button>
+      )}
 
-      <div className="flex w-full h-full">
-        {/* Left Image/Branding Side (Hidden on Mobile) */}
-        <div className="hidden lg:flex w-1/2 relative bg-[#cbdbf5] items-center justify-center overflow-hidden">
-          {/* Background Image with Brand Tint */}
+      <div className="flex w-full min-h-screen">
+        {/* Left Branding Side (Desktop Boutique Art) */}
+        <div className="hidden lg:flex w-1/2 relative bg-[#42308f] items-center justify-center overflow-hidden">
+          {/* Subtle Background Pattern & Gradient */}
           <div
-            className="absolute inset-0 z-0 bg-cover bg-center mix-blend-multiply opacity-85 scale-105 transition-transform duration-1000"
+            className="absolute inset-0 z-0 bg-cover bg-center mix-blend-overlay opacity-30 scale-105"
             style={{
-              backgroundImage: `url("https://lh3.googleusercontent.com/aida-public/AB6AXuDKFSYU_zgDXuzsxqLthkOHQqOUUAEEhM0E8o0dVXfJx5nIrXZMWRgFfyjaZekwJJPiHSe9kW8jjHGvsi2eoP4CFk0NlH_hH7n2hb1-OcGbsrj0W8pzm1vOEhM4zNZDeIqI3gwSTzaRhCK4_qIB0VL6Bpo2PsWKm7Zm-fLeYrsEAOWr371MfV52I4iDXzj46xGRW1Vl0wUP-HbaYdPIHP96fvxOjx1FgwaO2nBjA81HD9RtGL-jlThg")`,
+              backgroundImage: `url("https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80")`,
             }}
           />
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#2a1d63] via-[#42308f] to-[#5a49a8] opacity-95 z-10" />
 
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#42308f]/85 via-[#42308f]/40 to-transparent z-10" />
+          {/* Floating boutique badge accents */}
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5 blur-3xl" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-400/10 blur-3xl" />
 
           {/* Branding Content */}
-          <div className="z-20 p-12 flex flex-col h-full w-full max-w-2xl text-white">
+          <div className="z-20 p-12 flex flex-col justify-between h-full w-full max-w-xl text-white">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white">
-                <Store className="w-5 h-5" />
+              <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-lg">
+                <Store className="w-6 h-6" />
               </div>
-              <span className="font-heading font-bold text-lg tracking-wide text-white">
-                Aries Indumentaria
-              </span>
+              <div>
+                <span className="font-heading font-extrabold text-xl tracking-tight text-white block">
+                  Stocky Boutique
+                </span>
+                <span className="text-[11px] font-medium text-white/70 tracking-wide uppercase">
+                  Aries Indumentaria
+                </span>
+              </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center h-full w-full text-center px-4">
-              <h1 className="font-heading text-4xl xl:text-5xl font-extrabold text-white drop-shadow-md leading-tight">
-                ¡Es un placer tenerte de vuelta!
+            <div className="my-auto space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Gestión de Stock & Roles de Boutique</span>
+              </div>
+
+              <h1 className="font-heading text-4xl xl:text-5xl font-extrabold text-white leading-tight tracking-tight">
+                Control preciso de tu catálogo y stock.
               </h1>
-              <p className="text-white/80 text-sm mt-4 max-w-md font-medium">
-                Gestión inteligente de stock, talles y colecciones para tu tienda boutique.
+
+              <p className="text-white/80 text-sm leading-relaxed max-w-md">
+                Acceso escalonado para Dueña, Desarrollador y Equipo de Ventas. Preparado para autenticación segura en tiempo real con Supabase.
               </p>
+
+              {/* Roles summary pill list */}
+              <div className="grid grid-cols-3 gap-3 pt-2">
+                <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 rounded-2xl text-left">
+                  <span className="text-[10px] font-extrabold uppercase text-amber-300 tracking-wider block">SuperAdmin</span>
+                  <p className="text-xs font-bold text-white mt-0.5">Developer</p>
+                  <p className="text-[10px] text-white/70">Control total y DB</p>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 rounded-2xl text-left">
+                  <span className="text-[10px] font-extrabold uppercase text-emerald-300 tracking-wider block">Dueña</span>
+                  <p className="text-xs font-bold text-white mt-0.5">Admin</p>
+                  <p className="text-[10px] text-white/70">Stock y finanzas</p>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 rounded-2xl text-left">
+                  <span className="text-[10px] font-extrabold uppercase text-indigo-200 tracking-wider block">Equipo</span>
+                  <p className="text-xs font-bold text-white mt-0.5">Vendedora</p>
+                  <p className="text-[10px] text-white/70">Salón y reservas</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xs text-white/60 font-medium">
+              Aries Indumentaria © 2026 · Versión con Enrutamiento Escalonado
             </div>
           </div>
         </div>
 
         {/* Right Form Side */}
-        <div className="w-full lg:w-1/2 flex flex-col items-center justify-between p-6 sm:p-10 lg:p-12 bg-[#f8f9ff] relative overflow-y-auto">
-          {/* Decorative backdrop gradient on mobile */}
-          <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-[#cbdbf5]/50 to-transparent lg:hidden pointer-events-none" />
-
-          <div className="w-full max-w-md my-auto bg-white rounded-3xl border border-[#c9c4d3]/30 card-shadow p-8 sm:p-10 z-10 relative flex flex-col gap-6">
-            {/* Logo & Header */}
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#5a49a8] text-white mb-4 shadow-md">
-                <ShieldCheck className="w-8 h-8" />
+        <div className="w-full lg:w-1/2 flex flex-col items-center justify-between p-6 sm:p-10 lg:p-12 bg-[#f8f9ff] overflow-y-auto">
+          <div className="w-full max-w-md my-auto flex flex-col gap-6">
+            {/* Header Brand for Mobile */}
+            <div className="text-center lg:text-left">
+              <div className="inline-flex lg:hidden items-center justify-center w-14 h-14 rounded-2xl bg-[#42308f] text-white mb-3 shadow-md">
+                <Store className="w-7 h-7" />
               </div>
-              <h2 className="font-heading text-2xl font-bold text-[#42308f]">
-                Stocky
+              <h2 className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0b1c30] tracking-tight">
+                Iniciar Sesión
               </h2>
-              <p className="text-sm text-[#484552] font-medium">
-                Boutique Aries
-              </p>
-              <p className="text-[11px] font-bold text-[#797583] uppercase tracking-wider mt-2">
-                INICIO DE SESIÓN
+              <p className="text-xs sm:text-sm text-[#5e5d69] mt-1 font-medium">
+                Ingresa con tus credenciales asignadas para acceder a tu panel de boutique.
               </p>
             </div>
 
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {/* Error Banner */}
+            {loginError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-medium flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            {/* Main Form */}
+            <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow p-6 sm:p-8 space-y-4 shadow-sm">
               {/* Email Input */}
-              <div className="flex flex-col gap-1.5">
+              <div className="space-y-1.5">
                 <label
-                  htmlFor="email"
+                  htmlFor="login-email"
                   className="text-xs font-bold text-[#0b1c30] tracking-wide"
                 >
                   Correo Electrónico
@@ -117,33 +205,33 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     <User className="w-4 h-4" />
                   </div>
                   <input
-                    id="email"
+                    id="login-email"
                     name="email"
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#c9c4d3]/60 bg-[#f8f9ff] focus:bg-white focus:border-[#42308f] focus:ring-2 focus:ring-[#42308f]/20 outline-none transition-all text-sm text-[#0b1c30] placeholder:text-[#797583]/50 font-medium"
+                    placeholder="melina@indumentaria-aries.com"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#c9c4d3]/60 bg-[#f8f9ff] focus:bg-white focus:border-[#42308f] focus:ring-2 focus:ring-[#42308f]/20 outline-none transition-all text-xs sm:text-sm text-[#0b1c30] placeholder:text-[#797583]/50 font-medium"
                   />
                 </div>
               </div>
 
               {/* Password Input */}
-              <div className="flex flex-col gap-1.5">
+              <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <label
-                    htmlFor="password"
+                    htmlFor="login-password"
                     className="text-xs font-bold text-[#0b1c30] tracking-wide"
                   >
                     Contraseña
                   </label>
                   <button
                     type="button"
-                    onClick={() => alert('Se ha enviado un enlace de recuperación a tu correo')}
-                    className="text-[11px] font-semibold text-[#42308f] hover:underline"
+                    onClick={() => alert('Se ha enviado un enlace de recuperación al correo')}
+                    className="text-[11px] font-semibold text-[#42308f] hover:underline cursor-pointer"
                   >
-                    ¿Olvidaste tu contraseña?
+                    ¿Olvidaste tu clave?
                   </button>
                 </div>
                 <div className="relative group">
@@ -151,19 +239,20 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
-                    id="password"
+                    id="login-password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-2.5 rounded-2xl border border-[#c9c4d3]/60 bg-[#f8f9ff] focus:bg-white focus:border-[#42308f] focus:ring-2 focus:ring-[#42308f]/20 outline-none transition-all text-sm text-[#0b1c30] placeholder:text-[#797583]/50 font-medium"
+                    className="w-full pl-10 pr-11 py-2.5 rounded-2xl border border-[#c9c4d3]/60 bg-[#f8f9ff] focus:bg-white focus:border-[#42308f] focus:ring-2 focus:ring-[#42308f]/20 outline-none transition-all text-xs sm:text-sm text-[#0b1c30] placeholder:text-[#797583]/50 font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#797583] hover:text-[#0b1c30] transition-colors"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#797583] hover:text-[#0b1c30] transition-colors cursor-pointer"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -171,64 +260,111 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
 
               {/* Remember Me */}
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 pt-1">
                 <input
-                  id="remember"
+                  id="remember-device"
                   name="remember"
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-[#42308f] bg-white border-[#c9c4d3] rounded focus:ring-[#42308f] focus:ring-2 cursor-pointer accent-[#42308f]"
+                  className="w-4 h-4 text-[#42308f] bg-white border-[#c9c4d3] rounded focus:ring-[#42308f] cursor-pointer accent-[#42308f]"
                 />
                 <label
-                  htmlFor="remember"
-                  className="text-xs text-[#484552] font-medium cursor-pointer select-none"
+                  htmlFor="remember-device"
+                  className="text-xs text-[#5e5d69] font-medium cursor-pointer select-none"
                 >
-                  Recordarme en este dispositivo
+                  Recordar mi sesión en este dispositivo
                 </label>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-2.5 mt-4">
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-2 py-3 px-6 bg-[#42308f] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#5a49a8] hover:shadow-lg hover:shadow-[#42308f]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span>Iniciando sesión...</span>
+                ) : (
+                  <>
+                    <span>INGRESAR AL SISTEMA</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* QUICK ROLE SWITCHER FOR DEMONSTRATION & TESTING */}
+            <div className="bg-white rounded-3xl border border-[#c9c4d3]/40 p-5 card-shadow space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#797583] flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-[#42308f]" />
+                  Selector Rápido de Roles (Mocks):
+                </span>
+                <span className="text-[10px] font-bold text-[#42308f] bg-[#eff4ff] px-2 py-0.5 rounded-full">
+                  3 Niveles
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
-                  type="submit"
-                  className="w-full py-3 px-6 bg-[#42308f] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#5a49a8] hover:shadow-lg hover:shadow-[#42308f]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                  type="button"
+                  onClick={() => handleQuickRoleSelect('developer')}
+                  className="p-2.5 rounded-2xl bg-[#eff4ff] hover:bg-[#e1deed] border border-[#c9c4d3]/40 text-left transition-all group cursor-pointer"
+                  title="SuperAdmin con acceso a /configuracion-sistema y borrado de DB"
                 >
-                  <span>INICIAR SESIÓN</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#42308f] group-hover:underline">Developer</span>
+                    <Code className="w-3.5 h-3.5 text-[#42308f]" />
+                  </div>
+                  <p className="text-[10px] text-[#5e5d69] mt-0.5">SuperAdmin</p>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setRequestSent(false);
-                    setRequestAccessModal(true);
-                  }}
-                  className="w-full py-2.5 px-6 bg-[#e1deed] text-[#42308f] rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#d2c8ff] transition-all active:scale-[0.98] cursor-pointer"
+                  onClick={() => handleQuickRoleSelect('admin')}
+                  className="p-2.5 rounded-2xl bg-[#eff4ff] hover:bg-[#e1deed] border border-[#c9c4d3]/40 text-left transition-all group cursor-pointer"
+                  title="Dueña con acceso a /reportes-ventas y gestión total"
                 >
-                  SOLICITAR ACCESO
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#42308f] group-hover:underline">Admin</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#42308f]" />
+                  </div>
+                  <p className="text-[10px] text-[#5e5d69] mt-0.5">Dueña Boutique</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickRoleSelect('vendedora')}
+                  className="p-2.5 rounded-2xl bg-[#eff4ff] hover:bg-[#e1deed] border border-[#c9c4d3]/40 text-left transition-all group cursor-pointer"
+                  title="Empleada de ventas (sin acceso a reportes ni configuración técnica)"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#42308f] group-hover:underline">Vendedora</span>
+                    <ShoppingBag className="w-3.5 h-3.5 text-[#42308f]" />
+                  </div>
+                  <p className="text-[10px] text-[#5e5d69] mt-0.5">Empleada Salón</p>
                 </button>
               </div>
-            </form>
-          </div>
+            </div>
 
-          {/* Footer */}
-          <div className="w-full flex flex-col items-center gap-1.5 py-4 text-xs text-[#5e5d69]">
-            <p className="text-[11px] text-center">
-              © 2026 L&L Development - Stocky. Todos los derechos reservados.
-            </p>
-            <div className="flex gap-4 text-[11px] font-medium text-[#484552]">
-              <button onClick={() => alert('Soporte: ayuda@indumentaria-aries.com')} className="hover:text-[#42308f]">
-                Soporte
+            {/* Request Access Button */}
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setRequestSent(false);
+                  setRequestAccessModal(true);
+                }}
+                className="text-xs font-bold text-[#42308f] hover:underline cursor-pointer"
+              >
+                ¿Aún no tienes cuenta? Solicitar Acceso
               </button>
-              <span>•</span>
-              <button onClick={() => alert('Política de Privacidad de Aries')} className="hover:text-[#42308f]">
-                Privacidad
-              </button>
-              <span>•</span>
-              <button onClick={() => alert('Términos de servicio de Aries')} className="hover:text-[#42308f]">
-                Términos
-              </button>
+            </div>
+
+            {/* Footer */}
+            <div className="text-center text-[11px] text-[#797583]">
+              Stocky Aries Boutique · Conectividad Supabase Ready · 2026
             </div>
           </div>
         </div>
@@ -237,7 +373,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Solicitar Acceso Modal */}
       {requestAccessModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 card-shadow border border-[#c9c4d3]/40">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 card-shadow border border-[#c9c4d3]/40 space-y-4">
             {!requestSent ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-[#42308f]">
@@ -252,7 +388,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   placeholder="nombre@indumentaria-aries.com"
                   value={accessEmail}
                   onChange={(e) => setAccessEmail(e.target.value)}
-                  className="w-full px-4 py-2 text-sm border rounded-xl border-gray-300 focus:outline-none focus:border-[#42308f]"
+                  className="w-full px-4 py-2.5 text-xs border rounded-xl border-gray-300 focus:outline-none focus:border-[#42308f]"
                 />
                 <div className="flex justify-end gap-2 pt-2">
                   <button

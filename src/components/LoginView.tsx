@@ -11,14 +11,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  KeyRound,
-  Shield,
-  Sparkles,
-  ShoppingBag,
-  Code
+  Sparkles
 } from 'lucide-react';
-import { useAuth, DEMO_CREDENTIALS } from '../context/AuthContext';
-import { Role } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface LoginViewProps {
   onLoginSuccess?: (email: string) => void;
@@ -29,15 +24,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuccess,
   onBackToApp,
 }) => {
-  const { login, loginWithRole, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Redirigir a la ruta a la que intentaba acceder o a /dashboard
   const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
 
-  const [email, setEmail] = useState('melina@indumentaria-aries.com');
-  const [password, setPassword] = useState('boutique2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -68,34 +63,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   };
 
-  const handleQuickRoleSelect = async (role: Role) => {
-    const creds = DEMO_CREDENTIALS[role];
-    setEmail(creds.email);
-    setPassword(creds.pass);
-    await loginWithRole(role);
-    if (onLoginSuccess) {
-      onLoginSuccess(creds.email);
-    }
-    navigate(from, { replace: true });
-  };
-
   return (
     <div className="relative w-full min-h-screen bg-[#f8f9ff] flex overflow-x-hidden font-body">
-      {/* Quick link to return to Dashboard if invoked inside app */}
-      {onBackToApp && (
-        <button
-          onClick={onBackToApp}
-          className="absolute top-4 right-4 z-50 inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-md border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] shadow-sm transition-all active:scale-95"
-        >
-          <Store className="w-3.5 h-3.5" />
-          Ir al Panel de Inventario
-        </button>
-      )}
-
+      
       <div className="flex w-full min-h-screen">
-        {/* Left Branding Side (Desktop Boutique Art) */}
         <div className="hidden lg:flex w-1/2 relative bg-[#42308f] items-center justify-center overflow-hidden">
-          {/* Subtle Background Pattern & Gradient */}
           <div
             className="absolute inset-0 z-0 bg-cover bg-center mix-blend-overlay opacity-30 scale-105"
             style={{
@@ -104,11 +76,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
           />
           <div className="absolute inset-0 bg-gradient-to-tr from-[#2a1d63] via-[#42308f] to-[#5a49a8] opacity-95 z-10" />
 
-          {/* Floating boutique badge accents */}
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5 blur-3xl" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-400/10 blur-3xl" />
 
-          {/* Branding Content */}
           <div className="z-20 p-12 flex flex-col justify-between h-full w-full max-w-xl text-white">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-lg">
@@ -137,27 +107,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <p className="text-white/80 text-sm leading-relaxed max-w-md">
                 Acceso escalonado para Dueña, Desarrollador y Equipo de Ventas. Preparado para autenticación segura en tiempo real con Supabase.
               </p>
-
-              {/* Roles summary pill list */}
-              <div className="grid grid-cols-3 gap-3 pt-2">
-                <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 rounded-2xl text-left">
-                  <span className="text-[10px] font-extrabold uppercase text-amber-300 tracking-wider block">SuperAdmin</span>
-                  <p className="text-xs font-bold text-white mt-0.5">Developer</p>
-                  <p className="text-[10px] text-white/70">Control total y DB</p>
-                </div>
-
-                <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 rounded-2xl text-left">
-                  <span className="text-[10px] font-extrabold uppercase text-emerald-300 tracking-wider block">Dueña</span>
-                  <p className="text-xs font-bold text-white mt-0.5">Admin</p>
-                  <p className="text-[10px] text-white/70">Stock y finanzas</p>
-                </div>
-
-                <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 rounded-2xl text-left">
-                  <span className="text-[10px] font-extrabold uppercase text-indigo-200 tracking-wider block">Equipo</span>
-                  <p className="text-xs font-bold text-white mt-0.5">Vendedora</p>
-                  <p className="text-[10px] text-white/70">Salón y reservas</p>
-                </div>
-              </div>
             </div>
 
             <div className="text-xs text-white/60 font-medium">
@@ -166,10 +115,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </div>
         </div>
 
-        {/* Right Form Side */}
         <div className="w-full lg:w-1/2 flex flex-col items-center justify-between p-6 sm:p-10 lg:p-12 bg-[#f8f9ff] overflow-y-auto">
           <div className="w-full max-w-md my-auto flex flex-col gap-6">
-            {/* Header Brand for Mobile */}
             <div className="text-center lg:text-left">
               <div className="inline-flex lg:hidden items-center justify-center w-14 h-14 rounded-2xl bg-[#42308f] text-white mb-3 shadow-md">
                 <Store className="w-7 h-7" />
@@ -182,7 +129,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </p>
             </div>
 
-            {/* Error Banner */}
             {loginError && (
               <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-medium flex items-center gap-2 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -190,9 +136,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
             )}
 
-            {/* Main Form */}
             <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow p-6 sm:p-8 space-y-4 shadow-sm">
-              {/* Email Input */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="login-email"
@@ -211,13 +155,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="melina@indumentaria-aries.com"
+                    placeholder="lucerolasala@gmail.com"
                     className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#c9c4d3]/60 bg-[#f8f9ff] focus:bg-white focus:border-[#42308f] focus:ring-2 focus:ring-[#42308f]/20 outline-none transition-all text-xs sm:text-sm text-[#0b1c30] placeholder:text-[#797583]/50 font-medium"
                   />
                 </div>
               </div>
 
-              {/* Password Input */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <label
@@ -259,7 +202,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 </div>
               </div>
 
-              {/* Remember Me */}
               <div className="flex items-center gap-2 pt-1">
                 <input
                   id="remember-device"
@@ -277,7 +219,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 </label>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -294,61 +235,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </button>
             </form>
 
-            {/* QUICK ROLE SWITCHER FOR DEMONSTRATION & TESTING */}
-            <div className="bg-white rounded-3xl border border-[#c9c4d3]/40 p-5 card-shadow space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#797583] flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-[#42308f]" />
-                  Selector Rápido de Roles (Mocks):
-                </span>
-                <span className="text-[10px] font-bold text-[#42308f] bg-[#eff4ff] px-2 py-0.5 rounded-full">
-                  3 Niveles
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickRoleSelect('developer')}
-                  className="p-2.5 rounded-2xl bg-[#eff4ff] hover:bg-[#e1deed] border border-[#c9c4d3]/40 text-left transition-all group cursor-pointer"
-                  title="SuperAdmin con acceso a /configuracion-sistema y borrado de DB"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#42308f] group-hover:underline">Developer</span>
-                    <Code className="w-3.5 h-3.5 text-[#42308f]" />
-                  </div>
-                  <p className="text-[10px] text-[#5e5d69] mt-0.5">SuperAdmin</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickRoleSelect('admin')}
-                  className="p-2.5 rounded-2xl bg-[#eff4ff] hover:bg-[#e1deed] border border-[#c9c4d3]/40 text-left transition-all group cursor-pointer"
-                  title="Dueña con acceso a /reportes-ventas y gestión total"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#42308f] group-hover:underline">Admin</span>
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#42308f]" />
-                  </div>
-                  <p className="text-[10px] text-[#5e5d69] mt-0.5">Dueña Boutique</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickRoleSelect('vendedora')}
-                  className="p-2.5 rounded-2xl bg-[#eff4ff] hover:bg-[#e1deed] border border-[#c9c4d3]/40 text-left transition-all group cursor-pointer"
-                  title="Empleada de ventas (sin acceso a reportes ni configuración técnica)"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#42308f] group-hover:underline">Vendedora</span>
-                    <ShoppingBag className="w-3.5 h-3.5 text-[#42308f]" />
-                  </div>
-                  <p className="text-[10px] text-[#5e5d69] mt-0.5">Empleada Salón</p>
-                </button>
-              </div>
-            </div>
-
-            {/* Request Access Button */}
             <div className="text-center">
               <button
                 type="button"
@@ -362,7 +248,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </button>
             </div>
 
-            {/* Footer */}
             <div className="text-center text-[11px] text-[#797583]">
               Stocky Aries Boutique · Conectividad Supabase Ready · 2026
             </div>
@@ -370,7 +255,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </div>
       </div>
 
-      {/* Solicitar Acceso Modal */}
       {requestAccessModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 card-shadow border border-[#c9c4d3]/40 space-y-4">

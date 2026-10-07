@@ -224,27 +224,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
 
-              {/* Quick switch emulator buttons */}
-              <div className="pt-1 border-t border-gray-200/60">
-                <p className="text-[10px] font-bold text-[#797583] uppercase mb-1">Cambiar Rol:</p>
-                <div className="grid grid-cols-3 gap-1">
-                  {(['developer', 'admin', 'vendedora'] as Role[]).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => loginWithRole(r)}
-                      className={`text-[10px] font-bold py-1 px-1 rounded-lg transition-all truncate text-center ${
-                        role === r
-                          ? 'bg-[#42308f] text-white shadow-2xs'
-                          : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                      }`}
-                      title={`Simular rol: ${r}`}
-                    >
-                      {r === 'developer' ? 'Dev' : r === 'admin' ? 'Dueña' : 'Vend.'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div className="flex items-center justify-between pt-1 border-t border-gray-200/60 text-[11px]">
                 <button
                   onClick={() => handleNav('/configuracion', 'configuracion')}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -8,18 +8,15 @@ import {
   CalendarCheck,
   Tag,
   Truck,
-  Settings,
   Store,
   X,
-  LogIn,
   TrendingUp,
   Terminal,
-  ShieldCheck,
-  LogOut,
-  UserCheck,
-  Lock
+  Lock,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { NavScreen, Role } from '../types';
+import { NavScreen } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Can } from './auth/Can';
 
@@ -30,6 +27,7 @@ interface SidebarProps {
   onCloseMobile: () => void;
   isLoggedIn?: boolean;
   onOpenLogin?: () => void;
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -37,16 +35,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
   isOpenMobile,
   onCloseMobile,
-  onOpenLogin,
+  onCollapseChange,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, role, logout, loginWithRole, isAuthenticated } = useAuth();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleNav = (path: string, screenId: NavScreen) => {
     navigate(path);
     if (onNavigate) onNavigate(screenId);
     onCloseMobile();
+  };
+
+  const handleToggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    if (onCollapseChange) onCollapseChange(newState);
   };
 
   const currentPath = location.pathname;
@@ -73,10 +77,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed left-0 top-0 h-full w-[270px] bg-white border-r border-[#c9c4d3]/40 z-50 flex flex-col p-5 transition-transform duration-300 ease-in-out ${
-          isOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        className={`fixed left-0 top-0 h-full bg-white border-r border-[#c9c4d3]/40 z-50 flex flex-col p-5 transition-all duration-300 ease-in-out ${
+          isOpenMobile 
+            ? 'translate-x-0 w-[270px]' 
+            : `-translate-x-full md:translate-x-0 ${isCollapsed ? 'md:w-[88px] md:px-3' : 'md:w-[270px]'}`
         }`}
       >
+        {/* Botón de Colapsar/Expandir (Solo en Desktop) - AHORA CENTRADO VERTICALMENTE */}
+        <button
+          onClick={handleToggleCollapse}
+          className="hidden md:flex absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-white border border-[#c9c4d3] rounded-full items-center justify-center text-[#42308f] hover:bg-[#eff4ff] hover:scale-110 transition-all z-50 shadow-sm cursor-pointer"
+          aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
+        >
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+
         {/* Mobile Close Button */}
         <button
           onClick={onCloseMobile}
@@ -89,175 +104,129 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div
           onClick={() => handleNav('/dashboard', 'resumen')}
-          className="flex items-center gap-3 mb-6 px-2 cursor-pointer group"
+          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-2'} mb-6 cursor-pointer group transition-all`}
         >
           <div className="w-10 h-10 rounded-2xl bg-[#5a49a8] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
             <Store className="w-5 h-5" />
           </div>
-          <div>
-            <h1 className="font-heading text-lg font-bold text-[#42308f] leading-tight">Stocky</h1>
-            <p className="font-body text-[11px] text-[#5e5d69] font-medium tracking-tight">Aries Boutique</p>
-          </div>
+          {!isCollapsed && (
+            <div className="overflow-hidden whitespace-nowrap animate-in fade-in slide-in-from-left-2">
+              <h1 className="font-heading text-lg font-bold text-[#42308f] leading-tight">Stocky</h1>
+              <p className="font-body text-[11px] text-[#5e5d69] font-medium tracking-tight">Aries Boutique</p>
+            </div>
+          )}
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex flex-col gap-1 flex-grow overflow-y-auto pr-1">
-          <span className="text-[10px] font-bold text-[#797583] uppercase tracking-wider px-3 py-1">
-            General
-          </span>
+        <nav className="flex flex-col gap-1 flex-grow overflow-y-auto overflow-x-hidden pr-1 pb-6 custom-scrollbar">
+          
+          {/* Categoría: General */}
+          {!isCollapsed ? (
+            <span className="text-[10px] font-bold text-[#797583] uppercase tracking-wider px-3 py-1 whitespace-nowrap">
+              General
+            </span>
+          ) : (
+            <div className="h-4"></div> /* Espaciador sutil cuando está colapsado */
+          )}
+
           {mainNavItems.map((item) => {
             const isActive = currentPath === item.path || currentScreen === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNav(item.path, item.id)}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                title={isCollapsed ? item.label : undefined}
+                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-[#e1deed] text-[#42308f] shadow-2xs font-extrabold'
                     : 'text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f]'
                 }`}
               >
-                <span className={isActive ? 'text-[#42308f]' : 'text-[#797583]'}>
+                <span className={isActive ? 'text-[#42308f] shrink-0' : 'text-[#797583] shrink-0'}>
                   {item.icon}
                 </span>
-                <span>{item.label}</span>
+                {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
               </button>
             );
           })}
 
-          {/* RUTA PROTEGIDA ESCALONADA 1: /reportes-ventas (['developer', 'admin']) */}
+          {/* RUTA PROTEGIDA ESCALONADA 1: /reportes-ventas */}
           <div className="pt-2">
-            <span className="text-[10px] font-bold text-[#797583] uppercase tracking-wider px-3 py-1 flex items-center justify-between">
-              <span>Gestión Comercial</span>
-              <span className="text-[9px] font-bold text-[#42308f] bg-[#eff4ff] px-1.5 py-0.2 rounded">
-                Dueña / Dev
+            {!isCollapsed ? (
+              <span className="text-[10px] font-bold text-[#797583] uppercase tracking-wider px-3 py-1 flex items-center justify-between whitespace-nowrap">
+                <span>Gestión Comercial</span>
+                <span className="text-[9px] font-bold text-[#42308f] bg-[#eff4ff] px-1.5 py-0.2 rounded">
+                  Propietario
+                </span>
               </span>
-            </span>
+            ) : (
+              <div className="my-2 border-t border-[#c9c4d3]/40 w-6 mx-auto"></div>
+            )}
 
             <Can
               role={['developer', 'admin']}
               fallback={
                 <div
                   onClick={() => handleNav('/reportes-ventas', 'resumen')}
-                  className="flex items-center justify-between px-3.5 py-2 rounded-2xl text-xs text-gray-400 hover:bg-gray-50 cursor-pointer opacity-70"
-                  title="Bloqueado para rol vendedora"
+                  title={isCollapsed ? "Reportes Ventas (Bloqueado)" : "Bloqueado para rol vendedora"}
+                  className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'justify-between px-3.5 py-2 w-full'} rounded-2xl text-xs text-gray-400 hover:bg-gray-50 cursor-pointer opacity-70 transition-all`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <TrendingUp className="w-4 h-4 text-gray-300" />
-                    <span>Reportes Ventas</span>
+                    <TrendingUp className="w-4 h-4 text-gray-300 shrink-0" />
+                    {!isCollapsed && <span className="whitespace-nowrap">Reportes Ventas</span>}
                   </div>
-                  <Lock className="w-3 h-3 text-gray-400" />
+                  {!isCollapsed && <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
                 </div>
               }
             >
               <button
                 onClick={() => handleNav('/reportes-ventas', 'resumen')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                title={isCollapsed ? "Reportes Ventas" : undefined}
+                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'justify-between px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
                   currentPath === '/reportes-ventas'
                     ? 'bg-[#e1deed] text-[#42308f] shadow-2xs font-extrabold'
                     : 'text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f]'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <TrendingUp className="w-4 h-4 text-[#42308f]" />
-                  <span>Reportes Ventas</span>
+                  <TrendingUp className="w-4 h-4 text-[#42308f] shrink-0" />
+                  {!isCollapsed && <span className="whitespace-nowrap">Reportes Ventas</span>}
                 </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                  Finanzas
-                </span>
               </button>
             </Can>
           </div>
 
-          {/* RUTA PROTEGIDA ESCALONADA 2: /configuracion-sistema (['developer']) */}
+          {/* RUTA PROTEGIDA ESCALONADA 2: /configuracion-sistema */}
           <Can role="developer">
             <div className="pt-1">
-              <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider px-3 py-1 flex items-center justify-between">
-                <span>SuperAdmin</span>
-                <span className="text-[9px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.2 rounded">
-                  Solo Dev
+              {!isCollapsed ? (
+                <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider px-3 py-1 flex items-center justify-between whitespace-nowrap">
+                  <span>SuperAdmin</span>
+                  <span className="text-[9px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.2 rounded">
+                    Solo Dev
+                  </span>
                 </span>
-              </span>
+              ) : (
+                <div className="my-2 border-t border-rose-200 w-6 mx-auto"></div>
+              )}
 
               <button
                 onClick={() => handleNav('/configuracion-sistema', 'configuracion')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                title={isCollapsed ? "Config. Sistema & DB" : undefined}
+                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'justify-between px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
                   currentPath === '/configuracion-sistema'
                     ? 'bg-rose-100 text-rose-900 shadow-2xs font-extrabold'
                     : 'text-rose-900/80 hover:bg-rose-50 hover:text-rose-950'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Terminal className="w-4 h-4 text-rose-600" />
-                  <span>Config. Sistema & DB</span>
+                  <Terminal className="w-4 h-4 text-rose-600 shrink-0" />
+                  {!isCollapsed && <span className="whitespace-nowrap">Config. Sistema</span>}
                 </div>
               </button>
             </div>
           </Can>
         </nav>
-
-        {/* User Card & Role Switcher */}
-        <div className="pt-3 border-t border-[#c9c4d3]/30 flex flex-col gap-2 mt-auto">
-          {isAuthenticated && user ? (
-            <div className="bg-[#f8f9ff] p-3 rounded-2xl border border-[#c9c4d3]/40 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="w-7 h-7 rounded-full bg-[#42308f] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                    {user.name.charAt(0)}
-                  </div>
-                  <div className="truncate">
-                    <p className="text-xs font-bold text-[#0b1c30] truncate">{user.name}</p>
-                    <p className="text-[10px] text-[#797583] truncate">{user.email}</p>
-                  </div>
-                </div>
-
-                <span
-                  className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full shrink-0 ${
-                    role === 'developer'
-                      ? 'bg-rose-100 text-rose-800'
-                      : role === 'admin'
-                      ? 'bg-purple-100 text-[#42308f]'
-                      : 'bg-indigo-100 text-indigo-800'
-                  }`}
-                >
-                  {role}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-1 border-t border-gray-200/60 text-[11px]">
-                <button
-                  onClick={() => handleNav('/configuracion', 'configuracion')}
-                  className="font-bold text-[#5e5d69] hover:text-[#42308f] flex items-center gap-1"
-                >
-                  <Settings className="w-3 h-3" />
-                  <span>Ajustes</span>
-                </button>
-
-                <button
-                  onClick={async () => {
-                    await logout();
-                    navigate('/login');
-                  }}
-                  className="font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1"
-                >
-                  <LogOut className="w-3 h-3" />
-                  <span>Salir</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                navigate('/login');
-                onCloseMobile();
-              }}
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-xs font-bold text-white bg-[#42308f] hover:bg-[#5a49a8] transition-all"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Iniciar Sesión</span>
-            </button>
-          )}
-        </div>
       </aside>
     </>
   );

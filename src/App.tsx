@@ -75,6 +75,9 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Buzos');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  
+  // ESTADO NUEVO: para saber si la sidebar está colapsada
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // App data state loaded from persistent storage
   const [initialData] = useState(() => loadInitialAppData());
@@ -900,10 +903,15 @@ export default function App() {
                   onCloseMobile={() => setIsMobileSidebarOpen(false)}
                   isLoggedIn={true}
                   onOpenLogin={() => navigate('/login')}
+                  onCollapseChange={setIsSidebarCollapsed} // <--- Escucha cuando se achica/agranda
                 />
 
-                {/* Main Content Area */}
-                <div className="flex-1 md:ml-[270px] min-h-screen flex flex-col transition-all">
+                {/* Main Content Area: El margen se ajusta dinámicamente */}
+                <div 
+                  className={`flex-1 min-h-screen flex flex-col transition-all duration-300 ease-in-out ${
+                    isSidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'
+                  }`}
+                >
                   {/* Top Header */}
                   <Header
                     onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}

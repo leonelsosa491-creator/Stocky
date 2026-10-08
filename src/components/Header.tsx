@@ -6,10 +6,7 @@ import {
   Menu,
   ChevronDown,
   LogOut,
-  CheckCircle2,
-  User,
-  Sparkles,
-  ShoppingBag,
+  Settings,
   ShieldCheck,
   Code,
   KeyRound,
@@ -43,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenRegistrarVenta,
 }) => {
   const navigate = useNavigate();
-  const { user, role, logout, loginWithRole, isAuthenticated } = useAuth();
+  const { user, role, logout } = useAuth();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -54,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const roleLabels: Record<Role, { label: string; badgeClass: string }> = {
     developer: { label: 'SuperAdmin (Dev)', badgeClass: 'bg-rose-100 text-rose-800 border-rose-300' },
-    admin: { label: 'Dueña (Admin)', badgeClass: 'bg-purple-100 text-[#42308f] border-purple-300' },
+    admin: { label: 'Administrador', badgeClass: 'bg-purple-100 text-[#42308f] border-purple-300' },
     vendedora: { label: 'Vendedora', badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   };
 
@@ -99,27 +96,6 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Action Controls & User Profile */}
       <div className="flex items-center gap-2.5 sm:gap-3 ml-auto">
-        {/* Active Role Indicator Pill */}
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-white border border-[#c9c4d3]/50 rounded-full shadow-2xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-[10px] text-[#797583] font-bold">Rol:</span>
-          <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${roleLabels[userRole].badgeClass}`}>
-            {roleLabels[userRole].label}
-          </span>
-        </div>
-
-        {/* Quick Sale Button */}
-        {onOpenRegistrarVenta && (
-          <button
-            id="btn-header-registrar-venta"
-            onClick={onOpenRegistrarVenta}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-            title="Registrar venta en salón"
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Venta Salón</span>
-          </button>
-        )}
 
         {/* Notifications */}
         <div className="relative">
@@ -199,53 +175,14 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="px-4 py-2 border-b border-[#c9c4d3]/20">
                 <p className="font-heading font-extrabold text-sm text-[#0b1c30]">{userName}</p>
                 <p className="text-xs text-[#5e5d69]">{user?.email}</p>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${roleLabels[userRole].badgeClass}`}>
+                <div className="mt-2">
+                  <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full inline-block border ${roleLabels[userRole].badgeClass}`}>
                     {roleLabels[userRole].label}
                   </span>
-                  <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Activo
-                  </div>
-                </div>
-              </div>
-
-              {/* Role Emulation Switcher Inside Header Dropdown */}
-              <div className="px-4 py-2.5 border-b border-[#c9c4d3]/20">
-                <p className="text-[10px] font-extrabold uppercase text-[#797583] mb-1.5 flex items-center gap-1">
-                  <KeyRound className="w-3 h-3 text-[#42308f]" />
-                  Simular Rol (Frontend Demo):
-                </p>
-                <div className="grid grid-cols-3 gap-1">
-                  {(['developer', 'admin', 'vendedora'] as Role[]).map((r) => (
-                    <button
-                      key={r}
-                      onClick={async () => {
-                        await loginWithRole(r);
-                        setShowUserDropdown(false);
-                      }}
-                      className={`text-[10px] font-bold py-1 px-1 rounded-xl transition-all truncate text-center cursor-pointer ${
-                        userRole === r
-                          ? 'bg-[#42308f] text-white shadow-2xs'
-                          : 'bg-[#f8f9ff] text-gray-700 hover:bg-[#e1deed] border border-gray-200'
-                      }`}
-                    >
-                      {r === 'developer' ? 'Dev' : r === 'admin' ? 'Dueña' : 'Vendedora'}
-                    </button>
-                  ))}
                 </div>
               </div>
 
               <div className="py-1 text-xs text-[#484552]">
-                <button
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    navigate('/dashboard');
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-[#eff4ff] flex items-center gap-2 cursor-pointer font-medium"
-                >
-                  <Store className="w-4 h-4 text-[#42308f]" /> Dashboard Principal
-                </button>
-
                 <Can role={['developer', 'admin']}>
                   <button
                     onClick={() => {
@@ -277,17 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
                   }}
                   className="w-full text-left px-4 py-2 hover:bg-[#eff4ff] flex items-center gap-2 cursor-pointer font-medium"
                 >
-                  <User className="w-4 h-4 text-[#42308f]" /> Parámetros Boutique
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    navigate('/login');
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-[#eff4ff] flex items-center gap-2 text-[#42308f] font-semibold cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4" /> Ir a Pantalla de Login
+                  <Settings className="w-4 h-4 text-[#42308f]" /> Configuración
                 </button>
               </div>
 

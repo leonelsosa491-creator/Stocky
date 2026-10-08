@@ -1,25 +1,18 @@
 import React, { useState } from 'react';
 import {
-  Settings,
   Store,
   BellRing,
   Save,
   ShieldCheck,
-  Database,
   Check,
   Users,
-  UserPlus,
-  Shield,
-  User,
   Code,
-  CheckCircle2,
   Trash2,
-  X,
-  Sparkles,
   AlertTriangle,
   RotateCcw,
+  User
 } from 'lucide-react';
-import { AppUser, UserRole, Role } from '../types';
+import { AppUser, UserRole } from '../types';
 import { loadStoreSettings, saveStoreSettings } from '../utils/storage';
 import { Can } from './auth/Can';
 import { useAuth } from '../context/AuthContext';
@@ -36,15 +29,12 @@ interface ConfiguracionViewProps {
 }
 
 export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
-  users,
-  currentUser,
-  onSwitchUser,
-  onUpdateUserRole,
-  onAddUser,
-  onDeleteUser,
   onClearAllTestData,
   onRestoreTestData,
 }) => {
+  // Conexión real a tu sesión de Supabase
+  const { user, role } = useAuth();
+  
   const [saved, setSaved] = useState(false);
   const [initialSettings] = useState(() => loadStoreSettings());
   const [storeName, setStoreName] = useState(initialSettings.storeName);
@@ -52,15 +42,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   const [minAlertStock, setMinAlertStock] = useState(initialSettings.minAlertStock);
   const [emailAlerts, setEmailAlerts] = useState(initialSettings.emailAlerts);
 
-  // Testing clear confirmation modal
   const [isConfirmClearModalOpen, setIsConfirmClearModalOpen] = useState(false);
-
-  // New user modal state
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('vendedora');
-  const [userError, setUserError] = useState<string | null>(null);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,34 +56,8 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const handleCreateUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUserName.trim()) {
-      setUserError('Ingresá el nombre completo del usuario.');
-      return;
-    }
-    if (!newUserEmail.trim()) {
-      setUserError('Ingresá un correo electrónico válido.');
-      return;
-    }
-
-    onAddUser({
-      name: newUserName.trim(),
-      email: newUserEmail.trim(),
-      role: newUserRole,
-      status: 'activo',
-      lastActive: 'Recién creado',
-    });
-
-    setNewUserName('');
-    setNewUserEmail('');
-    setNewUserRole('usuario normal');
-    setUserError(null);
-    setIsAddUserModalOpen(false);
-  };
-
-  const getRoleBadge = (role: UserRole) => {
-    switch (role) {
+  const getRoleBadge = (currentRole: string | null | undefined) => {
+    switch (currentRole) {
       case 'admin':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#eff4ff] text-[#42308f] border border-[#42308f]/20 uppercase">
@@ -138,11 +94,11 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
           Configuración General
         </h1>
         <p className="text-sm text-[#5e5d69] mt-1">
-          Ajustes de la boutique, reglas de stock y administración de usuarios y roles.
+          Ajustes de la boutique, reglas de stock y administración de accesos.
         </p>
       </div>
 
-      {/* SECCIÓN 1: USUARIOS Y ROLES (SOLICITADO EXPLICITAMENTE) */}
+      {/* SECCIÓN 1: USUARIOS Y ROLES (Ahora conectado a la sesión real) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#c9c4d3]/40 card-shadow space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
           <div className="flex items-center gap-3">
@@ -151,39 +107,30 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
             </div>
             <div>
               <h3 className="font-heading font-extrabold text-base text-[#0b1c30]">
-                Gestión de Usuarios y Roles de Acceso
+                Gestión de Roles de Acceso
               </h3>
               <p className="text-xs text-[#797583]">
-                Definí quiénes operan el sistema: <strong>Administrador</strong>, <strong>Usuario normal</strong> o <strong>Desarrollador</strong>.
+                La creación de usuarios ahora se administra de forma segura desde el panel de Supabase.
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsAddUserModalOpen(true)}
-            className="px-4 py-2 bg-[#42308f] hover:bg-[#5a49a8] text-white text-xs font-bold rounded-full transition-all flex items-center gap-1.5 self-start sm:self-auto shadow-xs"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Nuevo Usuario</span>
-          </button>
         </div>
 
-        {/* Current Active Session Callout */}
+        {/* Current Active Session Callout - REAL DATA */}
         <div className="p-3.5 bg-gradient-to-r from-[#eff4ff] to-white border border-[#42308f]/20 rounded-2xl flex items-center justify-between text-xs">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#42308f] text-white font-bold flex items-center justify-center text-xs">
-              {currentUser.name.charAt(0)}
+            <div className="w-8 h-8 rounded-full bg-[#42308f] text-white font-bold flex items-center justify-center text-xs uppercase">
+              {user?.email ? user.email.charAt(0) : 'U'}
             </div>
             <div>
               <p className="font-bold text-[#0b1c30]">
-                Sesión activa actual: {currentUser.name}
+                Sesión activa actual
               </p>
-              <p className="text-[11px] text-[#5e5d69]">{currentUser.email}</p>
+              <p className="text-[11px] text-[#5e5d69]">{user?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {getRoleBadge(currentUser.role)}
+            {getRoleBadge(role)}
           </div>
         </div>
 
@@ -218,88 +165,6 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               Soporte técnico: logs de movimientos, diagnóstico de base de datos, depuración y ajustes de servidor.
             </p>
           </div>
-        </div>
-
-        {/* Users Table / List */}
-        <div className="border border-gray-200/70 rounded-2xl overflow-hidden divide-y divide-gray-100">
-          {users.map((u) => {
-            const isSelf = u.id === currentUser.id;
-            return (
-              <div
-                key={u.id}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/70 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {u.avatar ? (
-                    <img
-                      src={u.avatar}
-                      alt={u.name}
-                      className="w-9 h-9 rounded-full object-cover ring-1 ring-black/10"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-[#eff4ff] text-[#42308f] font-bold flex items-center justify-center text-xs">
-                      {u.name.charAt(0)}
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-heading font-bold text-xs text-[#0b1c30]">
-                        {u.name}
-                      </span>
-                      {isSelf && (
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
-                          Tu usuario
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-gray-500">{u.email}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 self-end sm:self-auto">
-                  {/* Role Selector */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-[11px] font-medium text-gray-400">Rol:</label>
-                    <select
-                      value={u.role}
-                      onChange={(e) => onUpdateUserRole(u.id, e.target.value as UserRole)}
-                      className="text-xs font-bold px-2.5 py-1.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#42308f]"
-                    >
-                      <option value="admin">Dueña (Admin)</option>
-                      <option value="vendedora">Vendedora (Empleada)</option>
-                      <option value="developer">Desarrollador (SuperAdmin)</option>
-                    </select>
-                  </div>
-
-                  {/* Switch Active Session */}
-                  {!isSelf && (
-                    <button
-                      type="button"
-                      onClick={() => onSwitchUser(u.id)}
-                      className="px-2.5 py-1.5 bg-[#eff4ff] hover:bg-[#dbe6ff] text-[#42308f] text-[11px] font-bold rounded-xl transition-colors"
-                      title="Probar vista con este usuario"
-                    >
-                      Simular Sesión
-                    </button>
-                  )}
-
-                  {/* Delete button (except main admin) */}
-                  {u.id !== 'USR-01' && (
-                    <button
-                      type="button"
-                      onClick={() => onDeleteUser(u.id)}
-                      className="p-1.5 text-gray-300 hover:text-[#ba1a1a] rounded-lg transition-colors"
-                      title="Eliminar usuario"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
 
@@ -384,7 +249,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   className="w-4 h-4 text-[#42308f] rounded accent-[#42308f]"
                 />
                 <span className="text-xs font-bold text-gray-700">
-                  Notificaciones automáticas a melina@indumentaria-aries.com
+                  Notificaciones automáticas a administradores
                 </span>
               </label>
               <p className="text-[11px] text-gray-400 ml-6 mt-1">
@@ -411,7 +276,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
         </div>
       </form>
 
-      {/* SECCIÓN 4: ZONA DE PRUEBAS / DEPURACIÓN (Solo visible y ejecutable por Developer) */}
+      {/* SECCIÓN 4: ZONA DE PRUEBAS / DEPURACIÓN */}
       <Can
         role="developer"
         fallback={
@@ -425,7 +290,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   Operaciones Críticas de Base de Datos
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  El vaciado general de datos está restringido al rol <strong>'developer' (SuperAdmin)</strong> para prevenir pérdidas accidentales.
+                  El vaciado general de datos está restringido al rol <strong>'developer' (SuperAdmin)</strong>.
                 </p>
               </div>
             </div>
@@ -563,97 +428,6 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                 Sí, Eliminar Todo
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Agregar Nuevo Usuario */}
-      {isAddUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-[#c9c4d3]/40 space-y-4">
-            <div className="flex justify-between items-start pb-3 border-b border-gray-100">
-              <div>
-                <h3 className="font-heading font-extrabold text-lg text-[#0b1c30]">
-                  Crear Nuevo Usuario
-                </h3>
-                <p className="text-xs text-gray-500">
-                  Asignale un rol de acceso: Administrador, Usuario normal o Desarrollador
-                </p>
-              </div>
-              <button
-                onClick={() => setIsAddUserModalOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {userError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800">
-                {userError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateUser} className="space-y-3.5">
-              <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">
-                  Nombre Completo *
-                </label>
-                <input
-                  type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="Ej. Florencia Vendedora"
-                  className="w-full px-3.5 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">
-                  Correo Electrónico *
-                </label>
-                <input
-                  type="email"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="florencia@indumentaria-aries.com"
-                  className="w-full px-3.5 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">
-                  Rol de Acceso *
-                </label>
-                <select
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value as UserRole)}
-                  className="w-full px-3.5 py-2 text-xs font-bold bg-[#eff4ff] border border-[#42308f]/30 rounded-xl focus:border-[#42308f] focus:outline-none text-[#42308f]"
-                >
-                  <option value="admin">Dueña (Admin - Control comercial)</option>
-                  <option value="vendedora">Vendedora (Mostrador / Salón)</option>
-                  <option value="developer">Desarrollador (SuperAdmin / DB)</option>
-                </select>
-              </div>
-
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddUserModalOpen(false)}
-                  className="flex-1 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-[#42308f] hover:bg-[#5a49a8] text-white text-xs font-bold rounded-xl shadow-xs"
-                >
-                  Crear Usuario
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

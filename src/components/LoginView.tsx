@@ -24,28 +24,33 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuccess,
   onBackToApp,
 }) => {
-  const { login, isLoading } = useAuth();
+  // Ahora traemos el error directo desde nuestro AuthContext
+  const { login, isLoading, error: authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirigir a la ruta a la que intentaba acceder o a /dashboard
   const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [requestAccessModal, setRequestAccessModal] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [accessEmail, setAccessEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError(null);
+    setLocalError(null);
 
     if (!email.trim()) {
-      setLoginError('Por favor ingresa tu correo electrónico corporativo.');
+      setLocalError('Por favor ingresa tu correo electrónico.');
+      return;
+    }
+    
+    if (!password) {
+      setLocalError('Por favor ingresa tu contraseña.');
       return;
     }
 
@@ -56,12 +61,18 @@ export const LoginView: React.FC<LoginViewProps> = ({
           onLoginSuccess(email);
         }
         navigate(from, { replace: true });
+      } else {
+        // Si Supabase devuelve false, mostramos el error para que no se quede mudo
+        setLocalError('Credenciales incorrectas. Verifica tu correo y contraseña.');
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Error al iniciar sesión';
-      setLoginError(errorMsg);
+      setLocalError(errorMsg);
     }
   };
+
+  // Usamos el error local o el que venga del contexto
+  const displayError = localError || authError;
 
   return (
     <div className="relative w-full min-h-screen bg-[#f8f9ff] flex overflow-x-hidden font-body">
@@ -129,10 +140,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </p>
             </div>
 
-            {loginError && (
+            {displayError && (
               <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-medium flex items-center gap-2 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{loginError}</span>
+                <span>{displayError}</span>
               </div>
             )}
 
@@ -254,61 +265,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </div>
         </div>
       </div>
-
-      {requestAccessModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 card-shadow border border-[#c9c4d3]/40 space-y-4">
-            {!requestSent ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-[#42308f]">
-                  <ShieldCheck className="w-6 h-6" />
-                  <h3 className="font-heading font-bold text-lg">Solicitar Acceso a Aries</h3>
-                </div>
-                <p className="text-xs text-gray-600">
-                  Ingresa tu correo corporativo para que la administradora Melina Gómez habilite tu rol en el sistema.
-                </p>
-                <input
-                  type="email"
-                  placeholder="nombre@indumentaria-aries.com"
-                  value={accessEmail}
-                  onChange={(e) => setAccessEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs border rounded-xl border-gray-300 focus:outline-none focus:border-[#42308f]"
-                />
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    onClick={() => setRequestAccessModal(false)}
-                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-full"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => setRequestSent(true)}
-                    className="px-5 py-2 text-xs font-bold text-white bg-[#42308f] hover:bg-[#5a49a8] rounded-full"
-                  >
-                    Enviar Solicitud
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-4 space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-                <h4 className="font-heading font-bold text-base text-gray-900">
-                  ¡Solicitud Enviada!
-                </h4>
-                <p className="text-xs text-gray-600">
-                  Recibirás una notificación una vez aprobado tu acceso.
-                </p>
-                <button
-                  onClick={() => setRequestAccessModal(false)}
-                  className="px-6 py-2 text-xs font-bold bg-[#42308f] text-white rounded-full mt-2"
-                >
-                  Entendido
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

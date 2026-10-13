@@ -12,7 +12,6 @@ import {
   X,
   TrendingUp,
   Terminal,
-  Lock,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -56,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const currentPath = location.pathname;
 
   const mainNavItems = [
-    { id: 'resumen' as NavScreen, path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'resumen' as NavScreen, path: '/dashboard', label: 'Resumen', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'stock' as NavScreen, path: '/stock', label: 'Stock Físico', icon: <Package className="w-4 h-4" /> },
     { id: 'productos' as NavScreen, path: '/productos', label: 'Prendas', icon: <Boxes className="w-4 h-4" /> },
     { id: 'movimientos' as NavScreen, path: '/movimientos', label: 'Movimientos', icon: <ArrowLeftRight className="w-4 h-4" /> },
@@ -83,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             : `-translate-x-full md:translate-x-0 ${isCollapsed ? 'md:w-[88px] md:px-3' : 'md:w-[270px]'}`
         }`}
       >
-        {/* Botón de Colapsar/Expandir (Solo en Desktop) - AHORA CENTRADO VERTICALMENTE */}
+        {/* Botón de Colapsar/Expandir */}
         <button
           onClick={handleToggleCollapse}
           className="hidden md:flex absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-white border border-[#c9c4d3] rounded-full items-center justify-center text-[#42308f] hover:bg-[#eff4ff] hover:scale-110 transition-all z-50 shadow-sm cursor-pointer"
@@ -120,13 +119,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation Links */}
         <nav className="flex flex-col gap-1 flex-grow overflow-y-auto overflow-x-hidden pr-1 pb-6 custom-scrollbar">
           
-          {/* Categoría: General */}
           {!isCollapsed ? (
             <span className="text-[10px] font-bold text-[#797583] uppercase tracking-wider px-3 py-1 whitespace-nowrap">
               General
             </span>
           ) : (
-            <div className="h-4"></div> /* Espaciador sutil cuando está colapsado */
+            <div className="h-4"></div>
           )}
 
           {mainNavItems.map((item) => {
@@ -150,61 +148,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
 
-          {/* RUTA PROTEGIDA ESCALONADA 1: /reportes-ventas */}
-          <div className="pt-2">
-            {!isCollapsed ? (
-              <span className="text-[10px] font-bold text-[#797583] uppercase tracking-wider px-3 py-1 flex items-center justify-between whitespace-nowrap">
-                <span>Gestión Comercial</span>
-                <span className="text-[9px] font-bold text-[#42308f] bg-[#eff4ff] px-1.5 py-0.2 rounded">
-                  Propietario
-                </span>
-              </span>
-            ) : (
-              <div className="my-2 border-t border-[#c9c4d3]/40 w-6 mx-auto"></div>
-            )}
-
-            <Can
-              role={['developer', 'admin']}
-              fallback={
-                <div
-                  onClick={() => handleNav('/reportes-ventas', 'resumen')}
-                  title={isCollapsed ? "Reportes Ventas (Bloqueado)" : "Bloqueado para rol vendedora"}
-                  className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'justify-between px-3.5 py-2 w-full'} rounded-2xl text-xs text-gray-400 hover:bg-gray-50 cursor-pointer opacity-70 transition-all`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <TrendingUp className="w-4 h-4 text-gray-300 shrink-0" />
-                    {!isCollapsed && <span className="whitespace-nowrap">Reportes Ventas</span>}
-                  </div>
-                  {!isCollapsed && <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
-                </div>
-              }
+          {/* PERMISO TIPO DJANGO: Solo Admin y Developer (Dueña) pueden ver Reportes */}
+          <Can role={['developer', 'admin']}>
+            <button
+              onClick={() => handleNav('/reportes-ventas', 'resumen')}
+              title={isCollapsed ? "Reportes" : undefined}
+              className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
+                currentPath === '/reportes-ventas'
+                  ? 'bg-[#e1deed] text-[#42308f] shadow-2xs font-extrabold'
+                  : 'text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f]'
+              }`}
             >
-              <button
-                onClick={() => handleNav('/reportes-ventas', 'resumen')}
-                title={isCollapsed ? "Reportes Ventas" : undefined}
-                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'justify-between px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
-                  currentPath === '/reportes-ventas'
-                    ? 'bg-[#e1deed] text-[#42308f] shadow-2xs font-extrabold'
-                    : 'text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f]'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-4 h-4 text-[#42308f] shrink-0" />
-                  {!isCollapsed && <span className="whitespace-nowrap">Reportes Ventas</span>}
-                </div>
-              </button>
-            </Can>
-          </div>
+              <span className={currentPath === '/reportes-ventas' ? 'text-[#42308f] shrink-0' : 'text-[#797583] shrink-0'}>
+                <TrendingUp className="w-4 h-4" />
+              </span>
+              {!isCollapsed && <span className="whitespace-nowrap">Reportes</span>}
+            </button>
+          </Can>
 
-          {/* RUTA PROTEGIDA ESCALONADA 2: /configuracion-sistema */}
+          {/* Configuración de Sistema (Solo Developer) */}
           <Can role="developer">
-            <div className="pt-1">
+            <div className="pt-2">
               {!isCollapsed ? (
                 <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider px-3 py-1 flex items-center justify-between whitespace-nowrap">
                   <span>SuperAdmin</span>
-                  <span className="text-[9px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.2 rounded">
-                    Solo Dev
-                  </span>
                 </span>
               ) : (
                 <div className="my-2 border-t border-rose-200 w-6 mx-auto"></div>
@@ -212,17 +179,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               <button
                 onClick={() => handleNav('/configuracion-sistema', 'configuracion')}
-                title={isCollapsed ? "Config. Sistema & DB" : undefined}
-                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'justify-between px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
+                title={isCollapsed ? "Config. Sistema" : undefined}
+                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
                   currentPath === '/configuracion-sistema'
                     ? 'bg-rose-100 text-rose-900 shadow-2xs font-extrabold'
                     : 'text-rose-900/80 hover:bg-rose-50 hover:text-rose-950'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Terminal className="w-4 h-4 text-rose-600 shrink-0" />
-                  {!isCollapsed && <span className="whitespace-nowrap">Config. Sistema</span>}
-                </div>
+                <Terminal className="w-4 h-4 text-rose-600 shrink-0" />
+                {!isCollapsed && <span className="whitespace-nowrap">Config. Sistema</span>}
               </button>
             </div>
           </Can>

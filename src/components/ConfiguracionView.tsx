@@ -3,19 +3,19 @@ import {
   Store,
   BellRing,
   Save,
-  ShieldCheck,
   Check,
-  Users,
-  Code,
   Trash2,
   AlertTriangle,
   RotateCcw,
-  User
+  User as UserIcon,
+  Upload,
+  Sparkles
 } from 'lucide-react';
 import { AppUser, UserRole } from '../types';
 import { loadStoreSettings, saveStoreSettings } from '../utils/storage';
 import { Can } from './auth/Can';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabase/supabaseClient';
 
 interface ConfiguracionViewProps {
   users: AppUser[];
@@ -28,14 +28,37 @@ interface ConfiguracionViewProps {
   onRestoreTestData?: () => void;
 }
 
+const createAvatarSvg = (color1: string, color2: string) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g${color1}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#${color1}"/><stop offset="100%" stop-color="#${color2}"/></linearGradient></defs><circle cx="60" cy="60" r="60" fill="url(#g${color1})"/><circle cx="60" cy="46" r="22" fill="#ffffff"/><path d="M 18 120 C 18 90, 35 76, 60 76 C 85 76, 102 90, 102 120 Z" fill="#ffffff"/></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+const PRESET_AVATARS = [
+  createAvatarSvg('5a49a8', '42308f'),
+  createAvatarSvg('d1d5db', '9ca3af'),
+  createAvatarSvg('60a5fa', '2563eb'),
+  createAvatarSvg('f472b6', 'db2777'),
+  createAvatarSvg('34d399', '059669'),
+];
+
 export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   onClearAllTestData,
   onRestoreTestData,
 }) => {
-  // Conexión real a tu sesión de Supabase
   const { user, role } = useAuth();
   
   const [saved, setSaved] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  
+  // Extraemos el nombre real o limpiamos el username por defecto
+  const rawName = user?.name || '';
+  const initialFirstName = rawName === 'lucerolasala' ? 'Lucero' : (rawName.includes(' ') ? rawName.split(' ')[0] : rawName);
+  const initialLastName = rawName === 'lucerolasala' ? 'Lasala' : (rawName.includes(' ') ? rawName.split(' ').slice(1).join(' ') : '');
+
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || PRESET_AVATARS[0]);
+
   const [initialSettings] = useState(() => loadStoreSettings());
   const [storeName, setStoreName] = useState(initialSettings.storeName);
   const [address, setAddress] = useState(initialSettings.address);
@@ -44,44 +67,56 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
 
   const [isConfirmClearModalOpen, setIsConfirmClearModalOpen] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    saveStoreSettings({
-      storeName,
-      address,
-      minAlertStock,
-      emailAlerts,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          setAvatarUrl(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const getRoleBadge = (currentRole: string | null | undefined) => {
-    switch (currentRole) {
-      case 'admin':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-[#eff4ff] text-[#42308f] border border-[#42308f]/20 uppercase">
-            <ShieldCheck className="w-3 h-3 text-[#42308f]" />
-            Dueña (Admin)
-          </span>
-        );
-      case 'vendedora':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-800 border border-indigo-200 uppercase">
-            <User className="w-3 h-3 text-indigo-600" />
-            Vendedora (Empleada)
-          </span>
-        );
-      case 'developer':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-900 border border-rose-300 uppercase">
-            <Code className="w-3 h-3 text-rose-600" />
-            SuperAdmin (Developer)
-          </span>
-        );
-      default:
-        return null;
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const fullName = `${firstName} ${lastName}`.trim();
+
+      // Enviamos la actualización real a los metadatos de Supabase
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          name: fullName,
+          avatar: avatarUrl
+        }
+      });
+
+      if (error) throw error;
+
+      setProfileSaved(true);
+      
+      // Recargamos la página brevemente para que el Header y el Sidebar 
+      // vuelvan a leer los datos frescos desde Supabase
+      setTimeout(() => {
+        setProfileSaved(false);
+        window.location.reload();
+      }, 1200);
+
+    } catch (error) {
+      console.error('Error al guardar en Supabase:', error);
+      alert('Hubo un problema de conexión con Supabase al guardar tu perfil.');
     }
+  };
+
+  const handleSaveStore = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveStoreSettings({ storeName, address, minAlertStock, emailAlerts });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -94,82 +129,130 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
           Configuración General
         </h1>
         <p className="text-sm text-[#5e5d69] mt-1">
-          Ajustes de la boutique, reglas de stock y administración de accesos.
+          Ajustes de tu perfil personal, la boutique y reglas de stock.
         </p>
       </div>
 
-      {/* SECCIÓN 1: USUARIOS Y ROLES (Ahora conectado a la sesión real) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#c9c4d3]/40 card-shadow space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-heading font-extrabold text-base text-[#0b1c30]">
-                Gestión de Roles de Acceso
-              </h3>
-              <p className="text-xs text-[#797583]">
-                La creación de usuarios ahora se administra de forma segura desde el panel de Supabase.
-              </p>
-            </div>
+      {/* SECCIÓN 1: PERFIL DE USUARIO */}
+      <form onSubmit={handleSaveProfile} className="bg-white rounded-3xl p-6 sm:p-8 border border-[#c9c4d3]/40 card-shadow space-y-6">
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <div className="w-10 h-10 rounded-full bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
+            <UserIcon className="w-5 h-5" />
           </div>
-        </div>
-
-        {/* Current Active Session Callout - REAL DATA */}
-        <div className="p-3.5 bg-gradient-to-r from-[#eff4ff] to-white border border-[#42308f]/20 rounded-2xl flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#42308f] text-white font-bold flex items-center justify-center text-xs uppercase">
-              {user?.email ? user.email.charAt(0) : 'U'}
-            </div>
-            <div>
-              <p className="font-bold text-[#0b1c30]">
-                Sesión activa actual
-              </p>
-              <p className="text-[11px] text-[#5e5d69]">{user?.email}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {getRoleBadge(role)}
-          </div>
-        </div>
-
-        {/* Roles Description Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          <div className="p-3.5 bg-[#f8f9ff] border border-gray-100 rounded-2xl space-y-1.5">
-            <div className="flex items-center gap-2 font-heading font-bold text-xs text-[#42308f]">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Administrador</span>
-            </div>
-            <p className="text-[11px] text-gray-600 leading-snug">
-              Control total: gestión de precios, promociones, proveedores, arqueo de caja y configuración del sistema.
-            </p>
-          </div>
-
-          <div className="p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-1.5">
-            <div className="flex items-center gap-2 font-heading font-bold text-xs text-emerald-800">
-              <User className="w-4 h-4" />
-              <span>Usuario Normal</span>
-            </div>
-            <p className="text-[11px] text-emerald-950 leading-snug">
-              Vendedora mostrador: registro de ventas, creación y entrega de reservas con seña, y consulta de stock en salón.
-            </p>
-          </div>
-
-          <div className="p-3.5 bg-amber-50/50 border border-amber-100 rounded-2xl space-y-1.5">
-            <div className="flex items-center gap-2 font-heading font-bold text-xs text-amber-900">
-              <Code className="w-4 h-4" />
-              <span>Desarrollador</span>
-            </div>
-            <p className="text-[11px] text-amber-950 leading-snug">
-              Soporte técnico: logs de movimientos, diagnóstico de base de datos, depuración y ajustes de servidor.
+          <div>
+            <h3 className="font-heading font-extrabold text-base text-[#0b1c30]">
+              Perfil de Administrador
+            </h3>
+            <p className="text-xs text-[#797583]">
+              Personaliza tu información personal y selecciona o sube tu foto de perfil.
             </p>
           </div>
         </div>
-      </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="w-24 h-24 rounded-full bg-[#5a49a8] overflow-hidden flex items-center justify-center text-white ring-4 ring-[#5a49a8]/20 shadow-md">
+              <img
+                src={avatarUrl}
+                alt="Avatar preview"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = PRESET_AVATARS[0];
+                }}
+              />
+            </div>
+            
+            <div className="w-full text-center flex flex-col gap-2">
+              <label className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#f8f9ff] hover:bg-[#eff4ff] text-[#42308f] border border-[#c9c4d3]/50 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Subir foto</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setAvatarUrl(PRESET_AVATARS[0])}
+                className="text-[11px] font-bold text-[#797583] hover:text-[#42308f] transition-colors cursor-pointer"
+              >
+                Restaurar avatar por defecto
+              </button>
+            </div>
+          </div>
+
+          <div className="md:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full text-xs px-3.5 py-2.5 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none font-medium"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Apellido
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full text-xs px-3.5 py-2.5 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none font-medium"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#42308f]" />
+                <span>O elegí un avatar predefinido:</span>
+              </label>
+              <div className="flex items-center gap-3 py-1">
+                {PRESET_AVATARS.map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setAvatarUrl(url)}
+                    className={`w-10 h-10 rounded-full overflow-hidden transition-all cursor-pointer ring-2 ${
+                      avatarUrl === url ? 'ring-[#42308f] scale-110 shadow-md' : 'ring-transparent opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={url} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-3">
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+              >
+                {profileSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                <span>{profileSaved ? 'Perfil Actualizado' : 'Guardar Perfil'}</span>
+              </button>
+              {profileSaved && (
+                <span className="text-xs font-bold text-emerald-600 animate-in fade-in">
+                  ¡Datos guardados en Supabase!
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </form>
 
       {/* SECCIÓN 2: DATOS DE LA BOUTIQUE */}
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSaveStore} className="space-y-6">
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#c9c4d3]/40 card-shadow space-y-4">
           <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
             <div className="w-9 h-9 rounded-full bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
@@ -259,11 +342,10 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
           </div>
         </div>
 
-        {/* Action button */}
         <div className="flex items-center gap-4 pt-2">
           <button
             type="submit"
-            className="px-8 py-3 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] transition-all shadow-md flex items-center gap-2"
+            className="px-8 py-3 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             <span>{saved ? 'Cambios Guardados' : 'Guardar Parámetros'}</span>
@@ -276,7 +358,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
         </div>
       </form>
 
-      {/* SECCIÓN 4: ZONA DE PRUEBAS / DEPURACIÓN */}
+      {/* SECCIÓN 4: ZONA DE PRUEBAS */}
       <Can
         role="developer"
         fallback={
@@ -361,7 +443,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
         </div>
       </Can>
 
-      {/* Modal Confirmación de Eliminación Total para Testear */}
+      {/* Modal Confirmación de Eliminación Total */}
       {isConfirmClearModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-rose-200 space-y-4">
@@ -386,11 +468,11 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
-                <span>Todos los <strong>movimientos de stock</strong> (ingresos, egresos y ventas)</span>
+                <span>Todos los <strong>movimientos de stock</strong></span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
-                <span>Todas las <strong>reservas de prendas</strong> señadas</span>
+                <span>Todas las <strong>reservas de prendas</strong></span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
@@ -410,7 +492,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsConfirmClearModalOpen(false)}
-                className="flex-1 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                className="flex-1 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -423,7 +505,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   }
                   setIsConfirmClearModalOpen(false);
                 }}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 Sí, Eliminar Todo
               </button>

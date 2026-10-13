@@ -37,17 +37,12 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      {/* HEADER MINIMALISTA */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            CATÁLOGO BOUTIQUE
-          </span>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Colección & Productos
           </h1>
-          <p className="text-sm text-[#5e5d69] mt-1">
-            Gestión de artículos, precios, temporadas y variantes.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
@@ -55,7 +50,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             <button
               id="btn-productos-registrar-venta"
               onClick={() => onOpenRegistrarVenta()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-full text-xs font-bold text-white transition-all shadow-sm active:scale-95"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-full text-xs font-bold text-white transition-all shadow-sm active:scale-95 cursor-pointer"
               title="Registrar venta y descontar stock"
             >
               <ShoppingBag className="w-4 h-4" />
@@ -64,7 +59,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
           )}
           <button
             onClick={onOpenNuevoIngreso}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Añadir Producto
@@ -79,7 +74,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             <button
               key={cat}
               onClick={() => setSelectedCat(cat)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 selectedCat === cat
                   ? 'bg-[#42308f] text-white shadow-xs'
                   : 'bg-white border border-[#c9c4d3]/40 text-[#5e5d69] hover:text-[#42308f]'
@@ -119,7 +114,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
           <button
             id="btn-catalogo-cargar-primera"
             onClick={onOpenNuevoIngreso}
-            className="px-6 py-2.5 bg-[#42308f] hover:bg-[#5a49a8] text-white text-xs font-bold rounded-full transition-all shadow-sm flex items-center gap-2"
+            className="px-6 py-2.5 bg-[#42308f] hover:bg-[#5a49a8] text-white text-xs font-bold rounded-full transition-all shadow-sm flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Cargar Primera Prenda
@@ -147,7 +142,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
                           e.stopPropagation();
                           setProductToDelete(item);
                         }}
-                        className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         title="Eliminar producto del inventario"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -191,7 +186,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
                         onOpenRegistrarVenta(item);
                       }}
                       disabled={item.stock === 0}
-                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                         item.stock === 0
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white shadow-2xs'

@@ -72,10 +72,8 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
   onExport,
   onUpdateProductStock,
 }) => {
-  // Confirmation state for deleting a product
   const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
 
-  // Filter states
   const [statusFilter, setStatusFilter] = useState<'all' | 'bajo' | 'agotado' | 'ok'>(
     initialStatusFilter || 'all'
   );
@@ -85,7 +83,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [tableSearch, setTableSearch] = useState('');
 
-  // Sync with prop when external navigation happens (e.g. clicking Low Stock in Resumen)
   React.useEffect(() => {
     if (initialStatusFilter !== undefined) {
       setStatusFilter(initialStatusFilter);
@@ -97,7 +94,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     onStatusFilterChange?.(newStatus);
   };
 
-  // Extract unique colors available across products for intuitive color pills
   const availableColors = useMemo(() => {
     const map = new Map<string, string>();
     products.forEach((p) => {
@@ -105,7 +101,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         map.set(p.colorName, p.colorHex || '#18181b');
       }
     });
-    // Add defaults if empty
     if (!map.has('Negro')) map.set('Negro', '#18181b');
     if (!map.has('Blanco')) map.set('Blanco', '#ffffff');
     if (!map.has('Azul Marino')) map.set('Azul Marino', '#1e3a8a');
@@ -115,7 +110,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
   }, [products]);
 
-  // Products scoped to current category for tab count badges
   const scopedProducts = useMemo(() => {
     if (!selectedCategory || selectedCategory === 'Todas') return products;
     return products.filter((p) => p.category.toLowerCase() === selectedCategory.toLowerCase());
@@ -135,7 +129,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     return scopedProducts.filter((p) => p.status === 'ok' && p.stock > p.minStockThreshold).length;
   }, [scopedProducts]);
 
-  // Filter products by selectedCategory (or All), size, season, color, status, search
   const filteredProducts = useMemo(() => {
     return products.filter((item) => {
       if (
@@ -149,7 +142,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
       if (seasonFilter && item.season !== seasonFilter) return false;
       if (colorFilter && !matchesColorFamily(item, colorFilter)) return false;
 
-      // Status filter
       if (statusFilter === 'bajo') {
         const isBajo = item.status === 'bajo' || (item.stock > 0 && item.stock <= item.minStockThreshold);
         if (!isBajo) return false;
@@ -179,7 +171,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
 
   const totalInView = filteredProducts.reduce((acc, p) => acc + p.stock, 0);
 
-  // Helper to find active promotion for a product
   const getActivePromotion = (prod: ProductItem) => {
     return promotions.find(
       (p) =>
@@ -265,18 +256,15 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           )}
         </nav>
 
-        {/* Title and Top Action Buttons */}
+        {/* Title and Top Action Buttons - LIMPIO Y MINIMALISTA */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight flex items-center gap-3">
-              <span>Stock: {selectedCategory === 'Todas' ? 'Todas las Prendas' : selectedCategory}</span>
+              <span>Stock de {selectedCategory === 'Todas' ? 'Todas las Prendas' : selectedCategory}</span>
               <span className="text-xs font-bold font-sans bg-[#eff4ff] text-[#42308f] px-3 py-1 rounded-full border border-[#42308f]/20">
                 {totalInView} unidades
               </span>
             </h1>
-            <p className="text-sm text-[#5e5d69] mt-1">
-              Gestiona tipos de prendas, carga nuevas partidas y filtra por talle, temporada y color.
-            </p>
           </div>
 
           {/* Actions */}
@@ -402,7 +390,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
       )}
 
-      {/* 1. SELECCIÓN DE TIPO DE PRENDAS (STOCK TABS: Buzos, Pantalones, Remeras, etc.) */}
+      {/* 1. SELECCIÓN DE TIPO DE PRENDAS */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#c9c4d3]/40 card-shadow space-y-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
@@ -413,9 +401,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           </span>
         </div>
 
-        {/* Scrollable Category Selector Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {/* Tab: Todas */}
           <button
             onClick={() => onNavigateToCategory('Todas')}
             className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
@@ -437,7 +423,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </span>
           </button>
 
-          {/* Dynamic Categories: Buzos, Pantalones, Remeras, Abrigos, Accesorios, + Nuevos */}
           {categories.map((cat) => {
             const isSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
             const catItemCount = products.filter((p) => p.category.toLowerCase() === cat.name.toLowerCase()).length;
@@ -466,7 +451,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             );
           })}
 
-          {/* Fast button to create stock at the end of the tabs */}
           <button
             onClick={onOpenCrearStock}
             className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] border border-dashed border-[#42308f]/40 transition-colors"
@@ -477,7 +461,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 2. SELECTORES INTERACTIVOS: TALLE, TEMPORADA, COLOR */}
+      {/* 2. SELECTORES INTERACTIVOS */}
       <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2">
@@ -503,7 +487,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           )}
         </div>
 
-        {/* SELECTOR RÁPIDO DE ESTADO (TODOS, STOCK BAJO, AGOTADOS, ETC.) */}
         <div className="pb-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-gray-700">Estado:</span>
@@ -686,7 +669,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
 
       {/* 3. LISTADO / CUADRÍCULA DE PRODUCTOS */}
       <div className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow overflow-hidden">
-        {/* Table Top Controls */}
         <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
           <div className="flex items-center gap-3">
             <h3 className="font-heading text-lg font-bold text-[#0b1c30]">
@@ -698,7 +680,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Search within this view */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-[#797583] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -710,7 +691,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
               />
             </div>
 
-            {/* List / Grid view toggles */}
             <div className="flex items-center bg-[#eff4ff] p-0.5 rounded-xl border border-[#c9c4d3]/30">
               <button
                 onClick={() => setViewMode('list')}
@@ -734,7 +714,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           </div>
         </div>
 
-        {/* View mode List / Table */}
         {filteredProducts.length === 0 ? (
           <div className="p-12 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-[#eff4ff] text-[#42308f] flex items-center justify-center mx-auto">
@@ -801,12 +780,9 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                       className="hover:bg-[#f8f9ff] transition-colors group cursor-pointer"
                       onClick={() => onEditStock(prod)}
                     >
-                      {/* CÓDIGO ÚNICO */}
                       <td className="px-6 py-4 font-mono text-xs font-bold text-[#42308f]">
                         {prod.sku}
                       </td>
-
-                      {/* PRODUCTO */}
                       <td className="px-6 py-4">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -835,8 +811,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           </div>
                         </div>
                       </td>
-
-                      {/* TALLE */}
                       <td className="px-6 py-4 text-center">
                         <button
                           onClick={(e) => {
@@ -849,8 +823,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           {prod.size}
                         </button>
                       </td>
-
-                      {/* COLOR */}
                       <td className="px-6 py-4">
                         {(() => {
                           const colDisplay = getProductColorDisplay(prod);
@@ -881,8 +853,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           );
                         })()}
                       </td>
-
-                      {/* TEMPORADA */}
                       <td className="px-6 py-4">
                         <button
                           onClick={(e) => {
@@ -895,8 +865,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           {prod.season}
                         </button>
                       </td>
-
-                      {/* STOCK */}
                       <td className="px-6 py-4 text-right">
                         <span
                           className={`font-heading text-lg font-extrabold ${
@@ -906,8 +874,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           {prod.stock}
                         </span>
                       </td>
-
-                      {/* UBICACIÓN */}
                       <td className="px-6 py-4 text-xs text-[#5e5d69]">
                         <div className="font-semibold text-[#0b1c30]">
                           {prod.locationFacility}
@@ -916,13 +882,9 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                           {prod.locationDetails}
                         </div>
                       </td>
-
-                      {/* ESTADO */}
                       <td className="px-6 py-4 text-center">
                         {getStatusBadge(prod.status, prod.stock)}
                       </td>
-
-                      {/* ACCIONES */}
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
@@ -1016,7 +978,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </table>
           </div>
         ) : (
-          /* Grid View Mode */
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProducts.map((prod) => {
               const promo = getActivePromotion(prod);
@@ -1160,7 +1121,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         )}
       </div>
 
-      {/* Confirmation Modal for deleting product */}
       {productToDelete && (
         <ConfirmDeleteModal
           isOpen={Boolean(productToDelete)}
@@ -1172,10 +1132,10 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             }
           }}
           title="Eliminar Prenda"
-          itemName={`${productToDelete.name} (${productToDelete.sku})`}
+          itemName={`${productToDelete?.name} (${productToDelete?.sku})`}
           itemType="la prenda del inventario"
           confirmText="Sí, Eliminar Prenda"
-          itemDetail={`Categoría: ${productToDelete.category} | Talle: ${productToDelete.size} | Color: ${productToDelete.colorName} | Stock actual: ${productToDelete.stock} u.`}
+          itemDetail={`Categoría: ${productToDelete?.category} | Talle: ${productToDelete?.size} | Color: ${productToDelete?.colorName} | Stock actual: ${productToDelete?.stock} u.`}
         />
       )}
     </div>

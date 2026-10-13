@@ -28,15 +28,9 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({ movements }) =
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            AUDITORÍA DE INVENTARIO
-          </span>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Movimientos de Stock
           </h1>
-          <p className="text-sm text-[#5e5d69] mt-1">
-            Registro cronológico de entradas, ventas y ajustes de depósito.
-          </p>
         </div>
 
         {/* Filter Pills */}

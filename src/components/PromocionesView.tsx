@@ -99,15 +99,9 @@ export const PromocionesView: React.FC<PromocionesViewProps> = ({
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            CAMPAÑAS BOUTIQUE
-          </span>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Promociones & Descuentos
           </h1>
-          <p className="text-sm text-[#5e5d69] mt-1">
-            Gestión comercial de descuentos y prendas vinculadas al stock en tiempo real.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

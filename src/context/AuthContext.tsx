@@ -34,35 +34,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Función para buscar el perfil real en tu base de datos de Supabase
-  const fetchProfile = async (authId: string, email: string) => {
+  // Ahora recibimos el authUser completo para poder leer sus metadatos
+  const fetchProfile = async (authUser: any) => {
     try {
       const { data, error } = await supabase
         .from('perfiles')
         .select('*')
-        .eq('id', authId)
+        .eq('id', authUser.id)
         .single();
 
-      if (error) throw error;
+      // Si el error es distinto a "No se encontraron filas", lo lanzamos
+      if (error && error.code !== 'PGRST116') throw error;
 
-      if (data) {
-        setUser({
-          id: authId,
-          name: data.nombre_completo || email.split('@')[0],
-          email: email,
-          role: data.rol as Role,
-          status: data.estado || 'activo',
-          lastActive: 'En línea',
-        });
-      }
+      // Extraemos los metadatos donde guardamos tu foto y tu nombre real
+      const metadata = authUser.user_metadata || {};
+
+      setUser({
+        id: authUser.id,
+        // Prioridad 1: Tu nombre personalizado. Prioridad 2: El de la tabla. Prioridad 3: Tu correo.
+        name: metadata.name || data?.nombre_completo || authUser.email.split('@')[0],
+        email: authUser.email,
+        role: (data?.rol as Role) || 'vendedora',
+        status: data?.estado || 'activo',
+        avatar: metadata.avatar, // <-- AQUÍ CONECTAMOS EL AVATAR
+        lastActive: 'En línea',
+      });
     } catch (err) {
       console.error('Error al cargar perfil de Supabase:', err);
-      // Solo en caso de error grave, asigna un rol seguro para no bloquear la app
+      
+      const metadata = authUser.user_metadata || {};
+      
+      // Fallback seguro usando tus metadatos si falla la tabla perfiles
       setUser({
-        id: authId,
-        name: email.split('@')[0],
-        email: email,
+        id: authUser.id,
+        name: metadata.name || authUser.email.split('@')[0],
+        email: authUser.email,
         role: 'vendedora', 
+        avatar: metadata.avatar,
         status: 'activo',
       });
     } finally {
@@ -74,7 +82,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email!);
+        // Le pasamos el objeto user completo en vez de solo id y email
+        fetchProfile(session.user);
       } else {
         setIsLoading(false);
       }
@@ -82,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        await fetchProfile(session.user.id, session.user.email!);
+        await fetchProfile(session.user);
       } else {
         setUser(null);
         setIsLoading(false);

@@ -24,3 +24,9 @@
 .card-shadow-hover {
   box-shadow: 0px 8px 30px rgba(66, 48, 143, 0.08);
 }
+
+@media print {
+  body * { visibility: hidden; }
+  .print\:m-0, .print\:m-0 * { visibility: visible; }
+  .print\:m-0 { position: absolute; left: 0; top: 0; width: 100%; }
+}

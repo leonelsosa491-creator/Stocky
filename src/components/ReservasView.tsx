@@ -106,15 +106,9 @@ export const ReservasView: React.FC<ReservasViewProps> = ({
       {/* Top Header & Overview */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            MOSTRADOR & CLIENTAS
-          </span>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Reservas con Seña
           </h1>
-          <p className="text-sm text-[#5e5d69] mt-1">
-            Prendas apartadas mediante seña (la mitad o menos). Gestioná retiros y caducidades.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">

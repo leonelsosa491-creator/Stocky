@@ -277,22 +277,16 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
 
   const isAnyFilterActive = selectedSeason !== 'Todas' || selectedDate !== '';
 
-  return (
+return (
     <div className="space-y-6">
       {/* Top Title Bar */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            PANEL DE INVENTARIO FÍSICO
-          </span>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Resumen de Stock
           </h1>
-          <p className="text-xs text-[#5e5d69] mt-0.5">
-            Control de prendas disponibles, alertas de reposición y flujo de mercadería.
-          </p>
         </div>
-
+        
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
           <button
             onClick={onExport}

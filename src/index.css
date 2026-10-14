@@ -30,3 +30,102 @@
   .print\:m-0, .print\:m-0 * { visibility: visible; }
   .print\:m-0 { position: absolute; left: 0; top: 0; width: 100%; }
 }
+
+/* =========================================
+   TRADUCTOR MODO OSCURO (ARMONÍA NOCHE/VIOLETA)
+   ========================================= */
+
+*, *::before, *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, background-image 0.3s ease;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* 1. Fondo principal (Noche muy profundo con subtono violeta) */
+html.dark body,
+html.dark #root,
+html.dark .min-h-screen,
+html.dark .bg-\[\#f8f9ff\] {
+  background-color: #13111a !important; 
+  color: #eae9f0 !important;
+}
+
+/* 2. Tarjetas y contenedores (Gris púrpura oscuro) */
+html.dark .bg-white,
+html.dark [class*="bg-gradient-to-"] {
+  background-image: none !important; 
+  background-color: #1e1b29 !important; 
+  border-color: #2d2a3d !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 3. Difuminado (blur) para Header */
+html.dark .bg-\[\#f8f9ff\]\/90,
+html.dark .bg-white\/85 {
+  background-color: rgba(19, 17, 26, 0.85) !important;
+}
+
+/* 4. Menú lateral (Aside - Botón activo) */
+html.dark aside .bg-white {
+  background-color: #252233 !important;
+  color: #d1cdef !important;
+  border-color: #42308f !important;
+}
+
+/* 5. Textos principales (Blanco tiza suave, no cansa la vista) */
+html.dark .text-\[\#0b1c30\],
+html.dark .text-gray-900,
+html.dark .text-gray-800 {
+  color: #eae9f0 !important;
+}
+
+/* 6. Textos secundarios (Gris lavanda apagado, súper armónico) */
+html.dark .text-\[\#5e5d69\],
+html.dark .text-\[\#797583\],
+html.dark .text-gray-700,
+html.dark .text-gray-600 {
+  color: #9d9ba7 !important;
+}
+
+/* 7. Bordes integrados en tono oscuro */
+html.dark [class*="border-\[\#c9c4d3\]"],
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-rose-100,
+html.dark .border-amber-100,
+html.dark .border-emerald-100 {
+  border-color: #2d2a3d !important;
+}
+
+/* 8. Alertas y Semáforos (Opacidad reducida para que no brillen) */
+html.dark .bg-rose-50, html.dark .bg-rose-50\/60 { background-color: rgba(225, 29, 72, 0.12) !important; }
+html.dark .bg-amber-50, html.dark .bg-amber-50\/60 { background-color: rgba(245, 158, 11, 0.12) !important; }
+html.dark .bg-emerald-50, html.dark .bg-emerald-50\/60 { background-color: rgba(16, 185, 129, 0.12) !important; }
+
+/* 9. Arreglo para inputs y barras de búsqueda */
+html.dark input, 
+html.dark select {
+  background-color: #13111a !important;
+  color: #eae9f0 !important;
+  border-color: #2d2a3d !important;
+}
+html.dark input::placeholder {
+  color: #6b687b !important;
+}
+
+/* 10. Corregir el destello blanco al pasar el mouse (Hovers en tablas y listas) */
+html.dark .hover\:bg-\[\#f8f9ff\]:hover,
+html.dark .hover\:bg-\[\#f8f9ff\]\/80:hover,
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-gray-100:hover {
+  background-color: #2a263d !important; /* Un gris violeta sutil para resaltar */
+  color: #eae9f0 !important;
+}
+
+/* 11. Evitar que las filas impares o fondos alternativos queden blancos */
+html.dark .bg-gray-50,
+html.dark .bg-gray-100 {
+  background-color: #1e1b29 !important;
+}

@@ -16,6 +16,7 @@ import {
   Filter,
   ShoppingBag,
   Calendar,
+  Moon,
   Sun,
   RotateCcw,
   X,
@@ -24,15 +25,17 @@ import {
   Layers,
   ShieldAlert,
   Inbox,
-  AlertCircle
+  Printer
 } from 'lucide-react';
-import { CategorySummary, ProductItem, StockMovement } from '../types';
+import { CategorySummary, ProductItem, StockMovement, ReservaItem } from '../types';
 import { Can } from './auth/Can';
+import { ReporteImprimible } from './ReporteImprimible';
 
 interface ResumenViewProps {
   categories: CategorySummary[];
   products: ProductItem[];
   movements?: StockMovement[];
+  reservas?: ReservaItem[];
   onSelectCategory: (categoryName: string) => void;
   onOpenNuevoIngreso: () => void;
   onOpenCrearStock?: () => void;
@@ -47,6 +50,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
   categories,
   products,
   movements = [],
+  reservas = [],
   onSelectCategory,
   onOpenNuevoIngreso,
   onOpenCrearStock,
@@ -58,6 +62,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
 }) => {
   const [categorySearch, setCategorySearch] = useState('');
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [isReporteOpen, setIsReporteOpen] = useState(false);
 
   // Filters: Season & Date
   const [selectedSeason, setSelectedSeason] = useState<string>('Todas');
@@ -197,9 +202,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
   // 3. MOVEMENTS FILTERED BY BOTH DATE AND SEASON
   const dateAndSeasonFilteredMovements = useMemo(() => {
     return movements.filter((m) => {
-      // Date filter
       if (selectedDate && !matchesMovementDate(m, selectedDate)) return false;
-      // Season filter: if season is not 'Todas', only include movements for active SKUs
       if (selectedSeason !== 'Todas' && !activeProductSkus.has(m.sku)) return false;
       return true;
     });
@@ -222,32 +225,27 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
   const percentBajo = totalModels > 0 ? Math.round((totalLowStock / totalModels) * 100) : 0;
   const percentAgotado = totalModels > 0 ? Math.max(0, 100 - percentOk - percentBajo) : 0;
 
-  // Donut SVG circumference calculation
   const donutRadius = 38;
-  const donutCircumference = 2 * Math.PI * donutRadius; // ~238.76
+  const donutCircumference = 2 * Math.PI * donutRadius; 
   const okStroke = (percentOk / 100) * donutCircumference;
   const bajoStroke = (percentBajo / 100) * donutCircumference;
   const agotadoStroke = (percentAgotado / 100) * donutCircumference;
 
-  // Stock Flow comparison metrics
   const maxFlow = Math.max(totalIngresos, totalEgresos, 1);
   const flowBalance = totalIngresos - totalEgresos;
   const isDepleting = totalEgresos > totalIngresos;
   const hasFlowActivity = totalIngresos > 0 || totalEgresos > 0;
 
-  // Filtered categories for table search
   const filteredCategories = useMemo(() => {
     return activeCategories.filter((c) =>
       c.name.toLowerCase().includes(categorySearch.toLowerCase())
     );
   }, [activeCategories, categorySearch]);
 
-  // Stacked Bar Chart max items calculation
   const maxCategoryUnits = useMemo(() => {
     return Math.max(...activeCategories.map((c) => c.totalItems), 10);
   }, [activeCategories]);
 
-  // Category with highest critical risk
   const mostCriticalCategory = useMemo(() => {
     if (activeCategories.length === 0) return null;
     return [...activeCategories].sort((a, b) => {
@@ -277,10 +275,10 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
 
   const isAnyFilterActive = selectedSeason !== 'Todas' || selectedDate !== '';
 
-return (
+  return (
     <div className="space-y-6">
       {/* Top Title Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
         <div>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Resumen de Stock
@@ -288,6 +286,13 @@ return (
         </div>
         
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+          <button
+            onClick={() => setIsReporteOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-800 text-white border border-gray-800 rounded-full text-xs font-bold hover:bg-black transition-all shadow-xs active:scale-95 cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+            Reporte de Cierre
+          </button>
           <button
             onClick={onExport}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95 cursor-pointer"
@@ -332,7 +337,6 @@ return (
       {/* FILTER TOOLBAR: TEMPORADA & DÍA (REACTIVO EN TIEMPO REAL) */}
       <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow space-y-3.5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Season Filter Chips */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#0b1c30] mr-1">
               <Sun className="w-4 h-4 text-amber-500" />
@@ -354,14 +358,12 @@ return (
             ))}
           </div>
 
-          {/* Calendar / Day Filter */}
           <div className="flex items-center gap-2.5 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#0b1c30]">
               <Calendar className="w-4 h-4 text-[#42308f]" />
               <span>Filtrar por Día:</span>
             </div>
 
-            {/* Quick shortcuts */}
             <div className="flex items-center gap-1 bg-[#f8f9ff] p-1 rounded-2xl border border-gray-200/70">
               <button
                 type="button"
@@ -398,7 +400,6 @@ return (
               </button>
             </div>
 
-            {/* HTML5 Native Calendar Date Picker */}
             <div className="relative flex items-center">
               <input
                 id="resumen-date-filter"
@@ -437,7 +438,6 @@ return (
           </div>
         </div>
 
-        {/* Active Filters Summary Bar */}
         {isAnyFilterActive && (
           <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap text-xs text-[#5e5d69]">
             <div className="flex items-center gap-2 flex-wrap">
@@ -477,7 +477,6 @@ return (
         )}
       </div>
 
-      {/* GLOBAL EMPTY STATE (If selected season has 0 products) */}
       {totalModels === 0 ? (
         <div className="bg-white rounded-3xl p-12 border border-[#c9c4d3]/40 card-shadow text-center space-y-4">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
@@ -502,12 +501,7 @@ return (
         </div>
       ) : (
         <>
-          {/* ======================================================== */}
-          {/* 1. ZONA SUPERIOR: MINI-GRÁFICOS CENTRADOS EN STOCK FÍSICO */}
-          {/* ======================================================== */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            
-            {/* PANEL 1: GRÁFICO TIPO ANILLO (DONUT) - SALUD DEL INVENTARIO */}
             <div className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow flex flex-col justify-between hover:border-[#42308f]/30 transition-all">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -529,12 +523,9 @@ return (
                   </span>
                 </div>
 
-                {/* Donut Chart & Legend Visual Row */}
                 <div className="flex items-center gap-5 pt-2 pb-1">
-                  {/* Donut SVG */}
                   <div className="relative w-28 h-28 shrink-0">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      {/* Background Track */}
                       <circle
                         cx="50"
                         cy="50"
@@ -543,7 +534,6 @@ return (
                         strokeWidth="10"
                         fill="transparent"
                       />
-                      {/* Segment 1: Óptimo (Emerald) */}
                       {percentOk > 0 && (
                         <circle
                           cx="50"
@@ -558,7 +548,6 @@ return (
                           className="transition-all duration-700"
                         />
                       )}
-                      {/* Segment 2: Bajo (Amber / Orange) */}
                       {percentBajo > 0 && (
                         <circle
                           cx="50"
@@ -573,7 +562,6 @@ return (
                           className="transition-all duration-700"
                         />
                       )}
-                      {/* Segment 3: Agotado (Crimson / Red) */}
                       {percentAgotado > 0 && (
                         <circle
                           cx="50"
@@ -590,7 +578,6 @@ return (
                       )}
                     </svg>
 
-                    {/* Center text inside Donut */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                       <span className="font-heading text-xl font-extrabold text-[#0b1c30] leading-none">
                         {percentOk}%
@@ -601,9 +588,7 @@ return (
                     </div>
                   </div>
 
-                  {/* Legend with Real Physical Counts and Percentages */}
                   <div className="flex-1 space-y-2 text-xs">
-                    {/* Óptimo */}
                     <div className="flex items-center justify-between text-gray-700" title="Modelos con stock suficiente para la venta">
                       <div className="flex items-center gap-1.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
@@ -614,7 +599,6 @@ return (
                       </span>
                     </div>
 
-                    {/* Bajo */}
                     <div
                       onClick={onNavigateToLowStock}
                       className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-amber-50 cursor-pointer transition-colors group"
@@ -630,7 +614,6 @@ return (
                       </span>
                     </div>
 
-                    {/* Agotado */}
                     <div
                       onClick={onNavigateToOutOfStock || onNavigateToLowStock}
                       className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors group"
@@ -649,7 +632,6 @@ return (
                 </div>
               </div>
 
-              {/* Bottom Insight */}
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-[#5e5d69]">
                 <span>Total en percheros y depósito:</span>
                 <span className="font-extrabold text-[#0b1c30]">
@@ -658,7 +640,6 @@ return (
               </div>
             </div>
 
-            {/* PANEL 2: GRÁFICO DE FLUJO - ENTRADAS VS. SALIDAS DE PRENDAS */}
             <div className="bg-white rounded-3xl p-6 border border-[#c9c4d3]/40 card-shadow flex flex-col justify-between hover:border-[#42308f]/30 transition-all">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -678,7 +659,6 @@ return (
                     </div>
                   </div>
 
-                  {/* Status Indicator */}
                   {hasFlowActivity ? (
                     isDepleting ? (
                       <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold flex items-center gap-1 animate-pulse">
@@ -698,10 +678,8 @@ return (
                   )}
                 </div>
 
-                {/* Visual Comparative Bars or Friendly Empty State */}
                 {hasFlowActivity ? (
                   <div className="space-y-3 pt-1">
-                    {/* Entradas Bar */}
                     <div>
                       <div className="flex justify-between items-center text-xs mb-1">
                         <span className="font-semibold text-emerald-800 flex items-center gap-1.5">
@@ -720,7 +698,6 @@ return (
                       </div>
                     </div>
 
-                    {/* Salidas Bar */}
                     <div>
                       <div className="flex justify-between items-center text-xs mb-1">
                         <span className="font-semibold text-rose-800 flex items-center gap-1.5">
@@ -751,7 +728,6 @@ return (
                 )}
               </div>
 
-              {/* Diagnostic Note / Balance */}
               <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between text-xs">
                 <div className="text-[11px] text-[#5e5d69]">
                   {hasFlowActivity ? (
@@ -774,7 +750,6 @@ return (
               </div>
             </div>
 
-            {/* PANEL 3: SEMÁFORO DE REPOSICIÓN FÍSICA (URGENCIA Y MODELOS AFECTADOS) */}
             <div
               className={`rounded-3xl p-6 border card-shadow flex flex-col justify-between transition-all ${
                 totalOutOfStock > 0
@@ -785,7 +760,6 @@ return (
               }`}
             >
               <div>
-                {/* Header: Traffic Light Status */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     {totalOutOfStock > 0 ? (
@@ -826,7 +800,6 @@ return (
                     </div>
                   </div>
 
-                  {/* Status Badge */}
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                       totalOutOfStock > 0
@@ -840,7 +813,6 @@ return (
                   </span>
                 </div>
 
-                {/* Real Physical Stock Urgency Box */}
                 <div className="mt-2 bg-white/85 backdrop-blur-xs p-3.5 rounded-2xl border border-rose-100/80 shadow-2xs space-y-2">
                   <div className="flex items-baseline justify-between">
                     <span className="text-[10px] font-bold uppercase text-[#5e5d69]">
@@ -851,7 +823,6 @@ return (
                     </span>
                   </div>
 
-                  {/* List of Affected Garments Preview */}
                   {totalOutOfStock > 0 ? (
                     <div className="space-y-1.5 pt-1">
                       {outOfStockProducts.slice(0, 2).map((p) => (
@@ -897,7 +868,6 @@ return (
                 </div>
               </div>
 
-              {/* Action Button */}
               <div className="pt-3 mt-3 border-t border-gray-100/80">
                 {totalOutOfStock > 0 ? (
                   <button
@@ -924,7 +894,6 @@ return (
             </div>
           </div>
 
-          {/* Selected Day Activity Highlight (When a day is selected via calendar) */}
           {selectedDate && (
             <div className="bg-gradient-to-r from-[#eff4ff] via-white to-[#fbf8ff] rounded-3xl p-5 border border-[#42308f]/20 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -981,7 +950,6 @@ return (
             </div>
           )}
 
-          {/* Selected Day Activity List Drawer / Expandable section */}
           {selectedDate && dateAndSeasonFilteredMovements.length > 0 && (
             <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow">
               <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
@@ -1063,11 +1031,7 @@ return (
             </div>
           )}
 
-          {/* ======================================================== */}
-          {/* 2. ZONA CENTRAL: GRÁFICO PRINCIPAL DE BARRAS APILADAS   */}
-          {/* ======================================================== */}
           <div className="bg-white rounded-3xl p-6 lg:p-7 border border-[#c9c4d3]/40 card-shadow space-y-5">
-            {/* Header & Boutique Legend */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -1088,7 +1052,6 @@ return (
                 </p>
               </div>
 
-              {/* Color Code Legend */}
               <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs font-semibold">
                 <div className="flex items-center gap-1.5" title="Prendas con stock disponible suficiente">
                   <span className="w-3 h-3 rounded-md bg-emerald-500 shadow-2xs" />
@@ -1105,11 +1068,8 @@ return (
               </div>
             </div>
 
-            {/* Stacked Bars Visual Chart */}
             <div className="pt-2 pb-2">
-              {/* Chart Canvas Area */}
               <div className="h-64 flex items-end justify-between gap-3 sm:gap-6 px-3 sm:px-8 border-b border-gray-200 relative">
-                {/* Horizontal guideline levels */}
                 <div className="absolute inset-x-0 top-0 border-b border-dashed border-gray-100 pointer-events-none flex justify-end pr-2 text-[10px] text-gray-400">
                   {maxCategoryUnits} prendas
                 </div>
@@ -1121,7 +1081,6 @@ return (
                   const heightPercent = Math.max(16, Math.round((cat.totalItems / maxCategoryUnits) * 100));
                   const isHovered = hoveredCategory === cat.name;
 
-                  // Compute proportion inside the category total
                   const okShare = cat.totalItems > 0 ? (cat.okUnits / cat.totalItems) * 100 : 0;
                   const lowShare = cat.totalItems > 0 ? (cat.lowUnits / cat.totalItems) * 100 : 0;
 
@@ -1133,7 +1092,6 @@ return (
                       onClick={() => onSelectCategory(cat.name)}
                       className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer relative"
                     >
-                      {/* Everyday Language Tooltip on Hover */}
                       {isHovered && (
                         <div className="absolute -top-20 z-20 bg-[#0b1c30] text-white p-3 rounded-xl shadow-xl text-left min-w-[210px] pointer-events-none transform -translate-y-2 transition-all">
                           <div className="flex items-center justify-between font-bold text-xs border-b border-white/20 pb-1 mb-1.5">
@@ -1161,7 +1119,6 @@ return (
                         </div>
                       )}
 
-                      {/* Value Above Bar */}
                       <div
                         className={`text-xs font-extrabold mb-1.5 transition-all flex items-center gap-1 ${
                           isHovered ? 'text-[#42308f] scale-110' : 'text-[#5e5d69]'
@@ -1176,14 +1133,12 @@ return (
                         )}
                       </div>
 
-                      {/* The STACKED BAR Column */}
                       <div
                         className={`w-full max-w-[56px] rounded-t-2xl overflow-hidden flex flex-col justify-end transition-all duration-300 shadow-xs relative ${
                           isHovered ? 'ring-2 ring-[#42308f] shadow-md scale-[1.03]' : ''
                         }`}
                         style={{ height: `${heightPercent}%` }}
                       >
-                        {/* Out of Stock Warning Cap (if any model is at 0) */}
                         {cat.outOfStock > 0 && (
                           <div
                             className="w-full bg-rose-600 hover:bg-rose-700 transition-colors py-0.5 flex items-center justify-center text-[9px] font-black text-white shrink-0"
@@ -1193,7 +1148,6 @@ return (
                           </div>
                         )}
 
-                        {/* Top Segment: Low Stock (Amber/Orange) */}
                         {cat.lowUnits > 0 && (
                           <div
                             className="w-full bg-amber-400 hover:bg-amber-500 transition-colors"
@@ -1202,7 +1156,6 @@ return (
                           />
                         )}
 
-                        {/* Bottom Segment: Optimal / Available Stock (Emerald Green) */}
                         <div
                           className="w-full bg-emerald-500 hover:bg-emerald-600 transition-colors flex-1"
                           title={`${cat.name}: ${cat.okUnits} prendas disponibles para la venta`}
@@ -1213,7 +1166,6 @@ return (
                 })}
               </div>
 
-              {/* Category Labels and Action Hints below bars */}
               <div className="flex items-center justify-between gap-3 sm:gap-6 px-3 sm:px-8 pt-3">
                 {activeCategories.map((cat) => (
                   <div key={cat.name} className="flex-1 text-center">
@@ -1232,7 +1184,6 @@ return (
               </div>
             </div>
 
-            {/* Boutique Executive Insights Pill Bar */}
             <div className="bg-[#f8f9ff] rounded-2xl p-4 border border-[#c9c4d3]/30 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#42308f]" />
@@ -1264,11 +1215,7 @@ return (
             </div>
           </div>
 
-          {/* ======================================================== */}
-          {/* 3. ZONA INFERIOR: TABLA DE INVENTARIO POR CATEGORÍA     */}
-          {/* ======================================================== */}
           <div className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow overflow-hidden">
-            {/* Table Header & Search */}
             <div className="p-6 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
@@ -1314,7 +1261,6 @@ return (
               </div>
             </div>
 
-            {/* Table Content or Filter Empty State */}
             {filteredCategories.length === 0 ? (
               <div className="p-8 text-center text-xs text-[#5e5d69]">
                 <p className="font-semibold text-gray-900">
@@ -1353,7 +1299,6 @@ return (
                           className="hover:bg-[#f8f9ff]/80 transition-colors group cursor-pointer"
                           onClick={() => onSelectCategory(cat.name)}
                         >
-                          {/* Categoría */}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-[#eff4ff] flex items-center justify-center shrink-0">
@@ -1372,7 +1317,6 @@ return (
                             </div>
                           </td>
 
-                          {/* Total Prendas (Unidades físicas) */}
                           <td className="px-6 py-4">
                             <span className="font-extrabold text-[#0b1c30]">
                               {cat.totalItems.toLocaleString('es-AR')}
@@ -1380,14 +1324,12 @@ return (
                             <span className="text-xs text-[#5e5d69]">prendas</span>
                           </td>
 
-                          {/* Modelos / Artículos registrados */}
                           <td className="px-6 py-4">
                             <span className="font-medium text-[#5e5d69]">
                               {catProducts.length} {catProducts.length === 1 ? 'modelo' : 'modelos'}
                             </span>
                           </td>
 
-                          {/* Estado Crítico (Stock Bajo y Agotados) */}
                           <td
                             className="px-6 py-4"
                             onClick={(e) => {
@@ -1426,7 +1368,6 @@ return (
                             </div>
                           </td>
 
-                          {/* Acción */}
                           <td className="px-6 py-4 text-right">
                             {hasCritical ? (
                               <button
@@ -1464,6 +1405,16 @@ return (
               </div>
             )}
           </div>
+          
+          {/* Reporte Imprimible Modal */}
+          {isReporteOpen && (
+            <ReporteImprimible
+              products={products}
+              reservas={reservas}
+              categories={categories}
+              onClose={() => setIsReporteOpen(false)}
+            />
+          )}
         </>
       )}
     </div>

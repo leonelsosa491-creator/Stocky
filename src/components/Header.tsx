@@ -12,7 +12,9 @@ import {
   KeyRound,
   TrendingUp,
   Terminal,
-  Store
+  Store,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { NavScreen, AppUser, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -44,6 +46,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  
+  // Estado para el modo oscuro global
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const userName = user?.name || 'Melina Gomez';
   const userRole = role || 'admin';
@@ -96,6 +101,26 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Action Controls & User Profile */}
       <div className="flex items-center gap-2.5 sm:gap-3 ml-auto">
+
+        {/* Global Dark Mode Switch */}
+        <button
+          onClick={() => {
+            setIsDarkMode(!isDarkMode);
+            document.documentElement.classList.toggle('dark');
+          }}
+          className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors cursor-pointer shadow-inner border mx-1 ${
+            isDarkMode ? 'bg-[#42308f] border-[#42308f]' : 'bg-white border-[#c9c4d3]/60'
+          }`}
+          title="Alternar Modo Oscuro"
+        >
+          <span
+            className={`inline-flex items-center justify-center w-[26px] h-[26px] transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
+              isDarkMode ? 'translate-x-[26px]' : 'translate-x-[2px]'
+            }`}
+          >
+            {isDarkMode ? <Moon className="w-3.5 h-3.5 text-[#42308f]" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />}
+          </span>
+        </button>
 
         {/* Notifications */}
         <div className="relative">

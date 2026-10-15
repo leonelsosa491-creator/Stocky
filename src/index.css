@@ -43,7 +43,7 @@ html.dark {
   color-scheme: dark;
 }
 
-/* 1. Fondo principal (Noche muy profundo con subtono violeta) */
+/* 1. Fondo principal */
 html.dark body,
 html.dark #root,
 html.dark .min-h-screen,
@@ -67,65 +67,266 @@ html.dark .bg-white\/85 {
   background-color: rgba(19, 17, 26, 0.85) !important;
 }
 
-/* 4. Menú lateral (Aside - Botón activo) */
-html.dark aside .bg-white {
-  background-color: #252233 !important;
-  color: #d1cdef !important;
-  border-color: #42308f !important;
-}
-
-/* 5. Textos principales (Blanco tiza suave, no cansa la vista) */
+/* 4. Textos principales */
 html.dark .text-\[\#0b1c30\],
-html.dark .text-gray-900,
-html.dark .text-gray-800 {
+html.dark [class*="text-gray-9"],
+html.dark [class*="text-gray-8"],
+html.dark [class*="text-slate-9"],
+html.dark [class*="text-slate-8"] {
   color: #eae9f0 !important;
 }
 
-/* 6. Textos secundarios (Gris lavanda apagado, súper armónico) */
+/* 5. Textos secundarios (Gris lavanda) y deshabilitados */
 html.dark .text-\[\#5e5d69\],
 html.dark .text-\[\#797583\],
-html.dark .text-gray-700,
-html.dark .text-gray-600 {
+html.dark [class*="text-gray-7"],
+html.dark [class*="text-gray-6"],
+html.dark [class*="text-gray-5"],
+html.dark [class*="text-slate-5"] {
   color: #9d9ba7 !important;
 }
+html.dark button[class*="text-gray-"]:hover {
+  color: #eae9f0 !important;
+}
 
-/* 7. Bordes integrados en tono oscuro */
+/* 6. Bordes integrados */
 html.dark [class*="border-\[\#c9c4d3\]"],
-html.dark .border-gray-100,
-html.dark .border-gray-200,
+html.dark [class*="border-gray-1"],
+html.dark [class*="border-gray-2"],
 html.dark .border-rose-100,
 html.dark .border-amber-100,
 html.dark .border-emerald-100 {
   border-color: #2d2a3d !important;
 }
 
-/* 8. Alertas y Semáforos (Opacidad reducida para que no brillen) */
+/* 7. Alertas y Semáforos (Fondos) */
 html.dark .bg-rose-50, html.dark .bg-rose-50\/60 { background-color: rgba(225, 29, 72, 0.12) !important; }
 html.dark .bg-amber-50, html.dark .bg-amber-50\/60 { background-color: rgba(245, 158, 11, 0.12) !important; }
 html.dark .bg-emerald-50, html.dark .bg-emerald-50\/60 { background-color: rgba(16, 185, 129, 0.12) !important; }
 
-/* 9. Arreglo para inputs y barras de búsqueda */
+/* 8. Textos de estado y semáforos */
+html.dark .text-amber-800, html.dark .text-amber-700, html.dark .text-amber-600 { color: #fbbf24 !important; }
+html.dark .text-rose-800, html.dark .text-rose-700, html.dark .text-rose-600, html.dark .text-\[\#ba1a1a\] { color: #fb7185 !important; }
+html.dark .text-emerald-800, html.dark .text-emerald-700, html.dark .text-emerald-600 { color: #34d399 !important; }
+html.dark .text-\[\#42308f\], html.dark .text-\[\#5a49a8\], html.dark .text-blue-800, html.dark .text-indigo-800, html.dark .text-blue-600 { color: #b8aee0 !important; }
+
+/* 9. Inputs y Textareas */
 html.dark input, 
-html.dark select {
+html.dark select,
+html.dark textarea {
   background-color: #13111a !important;
   color: #eae9f0 !important;
   border-color: #2d2a3d !important;
 }
-html.dark input::placeholder {
+html.dark input::placeholder, html.dark textarea::placeholder {
   color: #6b687b !important;
 }
 
-/* 10. Corregir el destello blanco al pasar el mouse (Hovers en tablas y listas) */
+/* 10. Hovers en tablas y listas */
 html.dark .hover\:bg-\[\#f8f9ff\]:hover,
 html.dark .hover\:bg-\[\#f8f9ff\]\/80:hover,
-html.dark .hover\:bg-gray-50:hover,
-html.dark .hover\:bg-gray-100:hover {
-  background-color: #2a263d !important; /* Un gris violeta sutil para resaltar */
+html.dark [class*="hover:bg-gray-"]:hover {
+  background-color: #2a263d !important; 
   color: #eae9f0 !important;
 }
 
-/* 11. Evitar que las filas impares o fondos alternativos queden blancos */
+/* 11. Líneas divisorias */
+html.dark [class*="divide-gray-"] > *,
+html.dark hr {
+  border-color: #2d2a3d !important;
+}
+
+/* 12. Bordes en botones de filtros */
+html.dark .border-rose-200\/80 { border-color: rgba(225, 29, 72, 0.3) !important; }
+html.dark .border-amber-200\/80 { border-color: rgba(245, 158, 11, 0.3) !important; }
+html.dark .border-emerald-200\/80 { border-color: rgba(16, 185, 129, 0.3) !important; }
+
+/* 13. Círculos y números en filtros */
+html.dark .bg-gray-200\/80 { background-color: #2d2a3d !important; color: #d1cdef !important; }
+html.dark span.w-3\.5.h-3\.5.rounded-full { border: 1px solid rgba(234, 233, 240, 0.25) !important; }
+
+/* 14. Pastillas secundarias (20% OFF, Ajuste, Fábrica) */
+html.dark [class*="bg-blue-5"],
+html.dark [class*="bg-indigo-5"],
+html.dark [class*="bg-purple-5"],
+html.dark .bg-\[\#eff4ff\],
+html.dark span.bg-white,
+html.dark div.bg-white.rounded-full {
+  background-color: rgba(66, 48, 143, 0.3) !important;
+  color: #d1cdef !important;
+  border-color: rgba(136, 115, 219, 0.3) !important;
+}
+
+/* 15. PIES DE TARJETA Y CAJAS GRISES (Reservas, Proveedores) - FUERZA BRUTA */
 html.dark .bg-gray-50,
-html.dark .bg-gray-100 {
-  background-color: #1e1b29 !important;
+html.dark .bg-gray-100,
+html.dark .bg-gray-200,
+html.dark [class*="bg-slate-1"],
+html.dark .card-shadow > div:last-child,
+html.dark [class*="rounded-2xl"] > div:last-child {
+  background-color: rgba(37, 34, 51, 0.6) !important;
+  border-color: #2d2a3d !important;
+}
+
+/* 16. EFECTO GLASSMORFISMO EN FILTROS */
+html.dark button.rounded-full.border {
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+html.dark button.rounded-full.border:not(.bg-\[\#42308f\]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-emerald"]) {
+  background-color: rgba(37, 34, 51, 0.45) !important;
+  border-color: rgba(234, 233, 240, 0.08) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 6px rgba(0, 0, 0, 0.2) !important;
+}
+html.dark button.bg-\[\#42308f\] {
+  background-color: rgba(66, 48, 143, 0.75) !important;
+  border-color: rgba(136, 115, 219, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(66, 48, 143, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 17. MEJORAS DE CONTRASTE EN MODO CLARO */
+html:not(.dark) body, html:not(.dark) #root, html:not(.dark) .min-h-screen, html:not(.dark) .bg-\[\#f8f9ff\] { background-color: #f1f5f9 !important; }
+html:not(.dark) .card-shadow { background-color: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 15px -3px rgba(66, 48, 143, 0.08), 0 4px 6px -4px rgba(66, 48, 143, 0.04) !important; }
+html:not(.dark) aside { background-color: #ffffff !important; border-right: 1px solid #cbd5e1 !important; }
+html:not(.dark) header { background-color: rgba(255, 255, 255, 0.95) !important; border-bottom: 1px solid #cbd5e1 !important; }
+
+/* 18. MENÚ LATERAL (SIDEBAR) - FUERZA BRUTA PARA ITEM ACTIVO */
+html.dark aside [class*="bg-"], 
+html.dark aside .bg-white {
+  background-color: transparent !important; /* Limpiamos todo primero */
+}
+/* Al ítem verdaderamente activo (que en tu código tiene bg-white o bg-purple) le damos el morado fuerte */
+html.dark aside .bg-white,
+html.dark aside [class*="bg-purple-"],
+html.dark aside [class*="bg-indigo-"],
+html.dark aside .bg-\[\#eff4ff\],
+html.dark aside .bg-\[\#f8f9ff\] {
+  background-color: #42308f !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(66, 48, 143, 0.4) !important;
+}
+/* Forzamos el texto blanco dentro del activo */
+html.dark aside .bg-white *,
+html.dark aside [class*="bg-purple-"] *,
+html.dark aside [class*="bg-indigo-"] *,
+html.dark aside .bg-\[\#eff4ff\] *,
+html.dark aside .bg-\[\#f8f9ff\] * {
+  color: #ffffff !important;
+}
+/* Hover del Sidebar */
+html.dark aside button:hover,
+html.dark aside a:hover {
+  background-color: rgba(234, 233, 240, 0.08) !important;
+}
+
+/* =========================================
+   21. CAJAS DE MONTOS EN RESERVAS (SEÑA Y SALDO)
+   ========================================= */
+
+/* 1. Oscurecer el fondo verde pastel de la Seña */
+html.dark [class*="bg-emerald-1"],
+html.dark [class*="bg-green-1"],
+html.dark [class*="bg-green-5"] {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* 2. Oscurecer el fondo amarillo/naranja pastel del Saldo */
+html.dark [class*="bg-amber-1"],
+html.dark [class*="bg-yellow-1"],
+html.dark [class*="bg-yellow-5"],
+html.dark [class*="bg-orange-5"],
+html.dark [class*="bg-orange-1"] {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+/* 3. Forzar que los montos grandes (los números) se vuelvan blancos brillantes 
+      y corregir el que se había vuelto lila claro */
+html.dark [class*="bg-emerald-"] p,
+html.dark [class*="bg-emerald-"] span,
+html.dark [class*="bg-emerald-"] div,
+html.dark [class*="bg-amber-"] p,
+html.dark [class*="bg-amber-"] span,
+html.dark [class*="bg-amber-"] div {
+  color: #eae9f0 !important;
+}
+
+/* 4. Rescatar los subtítulos ("SEÑA PAGADA", "SALDO AL RETIRAR") 
+      para que mantengan su color verde y amarillo neón, pisando la regla anterior */
+html.dark [class*="bg-emerald-"] [class*="text-emerald-"],
+html.dark [class*="bg-emerald-"] [class*="text-green-"] {
+  color: #34d399 !important; /* Verde esmeralda brillante */
+}
+
+html.dark [class*="bg-amber-"] [class*="text-amber-"],
+html.dark [class*="bg-amber-"] [class*="text-yellow-"],
+html.dark [class*="bg-amber-"] [class*="text-orange-"] {
+  color: #fbbf24 !important; /* Amarillo/Naranja brillante */
+}
+
+/* =========================================
+   22. GLASSMORFISMO EN TARJETAS PRINCIPALES
+   ========================================= */
+
+/* Aplicar el efecto cristal a los contenedores grandes (tarjetas) */
+html.dark .card-shadow,
+html.dark .bg-white.rounded-xl,
+html.dark .bg-white.rounded-2xl,
+html.dark .bg-white.rounded-3xl,
+html.dark .bg-white.rounded-[20px] {
+  background-color: rgba(30, 27, 41, 0.55) !important; /* Violeta oscuro semitransparente */
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important; /* Borde superior/lateral cristalino */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Evitar que el desenfoque rompa elementos internos absolutos o tooltips */
+html.dark .card-shadow *,
+html.dark .bg-white.rounded-2xl * {
+  backdrop-filter: none;
+}
+
+/* Ajustar el contenedor rojo de "Modelos en Quiebre" para que también sea de cristal */
+html.dark [class*="bg-gradient-to-"] {
+  background-color: rgba(30, 27, 41, 0.55) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(225, 29, 72, 0.2) !important; /* Brillo rojizo muy sutil en el borde */
+  box-shadow: 0 8px 32px rgba(225, 29, 72, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* =========================================
+   16. GLASSMORFISMO FORZADO EN FILTROS (CORREGIDO)
+   ========================================= */
+
+/* 1. Base del cristal para todos los chips (sean botones, divs, spans o labels) */
+html.dark .rounded-full.border,
+html.dark [class*="rounded-full"][class*="border"] {
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  background-image: none !important; /* Mata cualquier gradiente que bloquee la transparencia */
+}
+
+/* 2. Chips INACTIVOS (Grises oscuros): Hacerlos translúcidos con borde brillante sutil */
+html.dark [class*="rounded-full"][class*="border"]:not(.bg-\[\#42308f\]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-emerald"]) {
+  background-color: rgba(255, 255, 255, 0.04) !important; /* Un velo blanco súper transparente */
+  border-color: rgba(255, 255, 255, 0.12) !important; /* Borde cristalino */
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08) !important; /* Brillo interno de vidrio */
+}
+
+/* 3. Chips ACTIVOS (Morados): Cristal tintado de violeta luminoso */
+html.dark [class*="rounded-full"][class*="border"].bg-\[\#42308f\],
+html.dark [class*="rounded-full"][class*="border"][class*="bg-[#42308f]"],
+html.dark .bg-\[\#42308f\].rounded-full {
+  background-color: rgba(66, 48, 143, 0.6) !important; /* Violeta semitransparente */
+  border-color: rgba(136, 115, 219, 0.5) !important;
+  box-shadow: 0 4px 15px rgba(66, 48, 143, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 4. Efecto HOVER: Que brillen un poquito más al pasar el mouse por encima */
+html.dark [class*="rounded-full"][class*="border"]:hover:not(.bg-\[\#42308f\]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-emerald"]) {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }

@@ -286,20 +286,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         </div>
         
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-          <button
-            onClick={() => setIsReporteOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-800 text-white border border-gray-800 rounded-full text-xs font-bold hover:bg-black transition-all shadow-xs active:scale-95 cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-            Reporte de Cierre
-          </button>
-          <button
-            onClick={onExport}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-xs active:scale-95 cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            Exportar
-          </button>
+        
           {onOpenCrearStock && (
             <Can role={['developer', 'admin']}>
               <button

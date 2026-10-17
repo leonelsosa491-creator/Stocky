@@ -19,7 +19,7 @@ export interface ProductItem {
   colorName: string;
   colorFamily?: string; // Main color family: Blanco, Negro, Rojo, Naranja, Amarillo, Azul, Celeste, Violeta, Rosado, Marrón, Gris
   specificColor?: string; // Specific/commercial boutique color (e.g. "Bordó", "Rojo Cherry", "Marrón Oscuro")
-  colorHex: string;
+  colorHex: string; 
   size: string;
   season: string;
   stock: number;

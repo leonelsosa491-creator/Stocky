@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Heart } from 'lucide-react';
 import {
   Download,
   Edit3,
@@ -110,7 +111,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
   }, [products]);
 
-  // Garantizamos que la categoría seleccionada SIEMPRE exista en las pestañas, aunque no tenga prendas
   const visibleCategories = useMemo(() => {
     const cats = [...categories];
     if (
@@ -227,20 +227,53 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     );
   };
 
-  const getCategoryIcon = (iconName: string, catName: string) => {
-    if (iconName === 'hoodie' || catName === 'Buzos') return <Package className="w-4 h-4" />;
-    if (iconName === 'tshirt' || catName === 'Remeras') return <Shirt className="w-4 h-4" />;
-    if (iconName === 'pants' || catName === 'Pantalones') {
+const getCategoryIcon = (iconName: string, catName: string) => {
+    if (iconName === 'remera' || catName === 'Remeras') return <Shirt className="w-4 h-4" />;
+    if (iconName === 'pantalon' || catName === 'Pantalones') {
       return (
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 3v18l3-2 3 2 3-2 3 2V3H6z" />
+          <path d="M5 3h14l-1.5 18h-4L12 11l-1.5 10h-4L5 3z" />
         </svg>
       );
     }
-    if (iconName === 'coat' || catName === 'Abrigos') return <Shirt className="w-4 h-4" />;
-    if (iconName === 'dress') return <Sparkles className="w-4 h-4" />;
-    if (iconName === 'shoes') return <ShoppingBag className="w-4 h-4" />;
-    return <Layers className="w-4 h-4" />;
+    if (iconName === 'short' || catName === 'Shorts') {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 4h14l-1 11h-4.5L12 9l-1.5 6H6L5 4z" />
+        </svg>
+      );
+    }
+    if (iconName === 'campera' || catName === 'Abrigos') {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 9l-3 6h3v6h14v-6h3l-3-6c0-2-1-3-4-3H9c-3 0-4 1-4 3z" /><path d="M12 6v15" />
+        </svg>
+      );
+    }
+    if (iconName === 'buzo' || catName === 'Buzos') {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 10l-3 6h3v5h14v-5h3l-3-6c0-2-1-3-4-3H9c-3 0-4 1-4 3z" /><path d="M8 7c0-3 1.5-5 4-5s4 2 4 5" /><path d="M8 15h8l1 4H7z" />
+        </svg>
+      );
+    }
+    if (iconName === 'accesorio') {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 3 C7 10 10 14 12 14.5 C14 14 17 10 17 3" /><circle cx="12" cy="17.5" r="2.5" />
+        </svg>
+      );
+    }
+    if (iconName === 'lenceria' || catName === 'Lencería' || catName === 'Lenceria') {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9h18v1c0 4-3 6-5 8H8c-2-2-5-4-5-8V9z" />
+          <path d="M10 7.5L12 9l2-1.5v3L12 9l-2 1.5z" />
+        </svg>
+      );
+    }
+    
+    return <Sparkles className="w-4 h-4" />;
   };
 
   const hasActiveFilters = Boolean(
@@ -257,7 +290,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumbs & Header */}
       <div className="space-y-3">
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-bold text-[#5e5d69] uppercase tracking-wider">
           <button
@@ -278,7 +310,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           )}
         </nav>
 
-        {/* Title and Top Action Buttons - LIMPIO Y MINIMALISTA */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight flex items-center gap-3">
@@ -289,7 +320,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </h1>
           </div>
 
-          {/* Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
             {onOpenRegistrarVenta && (
               <button
@@ -303,7 +333,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
               </button>
             )}
 
-            {/* NUEVO BOTÓN: Reponer Existente */}
             <button
               onClick={() => {
                 onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'reponer');
@@ -317,7 +346,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
               Reponer Existente
             </button>
 
-            {/* NUEVO BOTÓN: Prenda Nueva */}
             <button
               onClick={() => {
                 onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'nuevo');
@@ -334,7 +362,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
       </div>
 
-      {/* BANNER DE FILTRO DE STOCK ACTIVO */}
       {statusFilter !== 'all' && (
         <div
           id="banner-atencion-stock"
@@ -413,7 +440,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
       )}
 
-      {/* 1. SELECCIÓN DE TIPO DE PRENDAS */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#c9c4d3]/40 card-shadow space-y-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
@@ -465,7 +491,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 2. SELECTORES INTERACTIVOS */}
       <div className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2">
@@ -551,7 +576,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* SELECTOR DE TALLE */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-gray-700">Talle:</span>
@@ -584,7 +608,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </div>
           </div>
 
-          {/* SELECTOR DE TEMPORADA */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-gray-700">Temporada:</span>
@@ -617,7 +640,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </div>
           </div>
 
-          {/* SELECTOR DE COLOR */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-gray-700">Familia de Color:</span>
@@ -671,7 +693,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 3. LISTADO / CUADRÍCULA DE PRODUCTOS */}
       <div className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
           <div className="flex items-center gap-3">
@@ -770,7 +791,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                   <th className="px-6 py-4 font-semibold w-28">COLOR</th>
                   <th className="px-6 py-4 font-semibold w-32">TEMPORADA</th>
                   <th className="px-6 py-4 font-semibold w-28 text-right">STOCK</th>
-                  <th className="px-6 py-4 font-semibold w-40">UBICACIÓN</th>
                   <th className="px-6 py-4 font-semibold w-28 text-center">ESTADO</th>
                   <th className="px-6 py-4 font-semibold w-24 text-right">ACCIONES</th>
                 </tr>
@@ -877,14 +897,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                         >
                           {prod.stock}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-[#5e5d69]">
-                        <div className="font-semibold text-[#0b1c30]">
-                          {prod.locationFacility}
-                        </div>
-                        <div className="text-[11px] text-[#797583]">
-                          {prod.locationDetails}
-                        </div>
                       </td>
                       <td className="px-6 py-4 text-center">
                         {getStatusBadge(prod.status, prod.stock)}

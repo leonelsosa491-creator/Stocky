@@ -181,9 +181,9 @@ export default function App() {
     setStockStatusFilter(filter);
     navigate('/stock');
     if (filter === 'bajo') {
-      showToast('Mostrando modelos con stock bajo');
+      showToast('Mostrando prendas con stock bajo');
     } else if (filter === 'agotado') {
-      showToast('Mostrando modelos agotados');
+      showToast('Mostrando prendas agotadas');
     }
   };
 
@@ -680,7 +680,7 @@ export default function App() {
             <Route element={<RoleRoute allowedRoles={['developer', 'admin', 'vendedora']} />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<ResumenView categories={categories} products={products} movements={movements} onSelectCategory={handleSelectCategory} onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)} onOpenCrearStock={handleOpenCrearStock} onOpenRegistrarVenta={() => handleOpenRegistrarVenta()} onNavigateToLowStock={() => handleNavigateToStockWithStatus('bajo', 'Todas')} onNavigateToOutOfStock={() => handleNavigateToStockWithStatus('agotado', 'Todas')} onSelectCategoryWithFilter={(catName, filter) => handleNavigateToStockWithStatus(filter, catName)} onExport={handleExport} />} />
-              <Route path="/stock" element={<StockDetailView products={products} categories={categories} selectedCategory={selectedCategory} promotions={promotions} initialStatusFilter={stockStatusFilter} onStatusFilterChange={setStockStatusFilter} onNavigateToCategory={(cat) => setSelectedCategory(cat)} onNavigateToResumen={() => navigate('/dashboard')} onOpenCrearStock={handleOpenCrearStock} onOpenCargarProducto={(cat, prod) => { if (prod) { handleOpenCargarProducto(cat, prod, 'nuevo'); } else { handleOpenCargarProducto(cat, null, 'reponer'); } }} onQuickReplenish={handleQuickReplenish} onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)} onOpenReserva={handleOpenNuevaReserva} onEditStock={(p) => { if (p) { handleOpenCargarProducto(p.category, p, 'nuevo'); } else { handleOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : 'Buzos', null, 'reponer'); } }} onExport={handleExport} onUpdateProductStock={handleUpdateProductStock} onDeleteProduct={handleDeleteProduct} />} />
+              <Route path="/stock" element={<StockDetailView products={products} categories={categories} selectedCategory={selectedCategory} promotions={promotions} initialStatusFilter={stockStatusFilter} onStatusFilterChange={setStockStatusFilter} onNavigateToCategory={(cat) => setSelectedCategory(cat)} onNavigateToResumen={() => navigate('/dashboard')} onOpenCrearStock={handleOpenCrearStock} onOpenCargarProducto={(cat, prod, mode) => handleOpenCargarProducto(cat, prod, mode || 'reponer')} onQuickReplenish={handleQuickReplenish} onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)} onOpenReserva={handleOpenNuevaReserva} onEditStock={(p) => { if (p) { handleOpenCargarProducto(p.category, p, 'nuevo'); } else { handleOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : 'Buzos', null, 'reponer'); } }} onExport={handleExport} onUpdateProductStock={handleUpdateProductStock} onDeleteProduct={handleDeleteProduct} />} />
               <Route path="/productos" element={<ProductosView products={products} onSelectProduct={(p) => { setSelectedCategory(p.category); setEditingProduct(p); navigate('/stock'); }} onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)} onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)} onDeleteProduct={handleDeleteProduct} />} />
               <Route path="/movimientos" element={<MovimientosView movements={movements} />} />
               <Route path="/reservas" element={<ReservasView reservas={reservas} products={products} onOpenNuevaReserva={() => handleOpenNuevaReserva()} onMarcarRetirada={handleMarkReservaRetired} onEliminarReserva={handleDeleteReserva} onEliminarCaducadas={handleClearCaducadas} onNavigateToStock={() => navigate('/stock')} />} />

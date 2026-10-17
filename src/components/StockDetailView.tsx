@@ -40,7 +40,7 @@ interface StockDetailViewProps {
   onNavigateToCategory: (cat: string) => void;
   onNavigateToResumen: () => void;
   onOpenCrearStock: () => void;
-  onOpenCargarProducto: (cat?: string, productToEdit?: ProductItem | null) => void;
+ onOpenCargarProducto: (cat?: string, productToEdit?: ProductItem | null, mode?: 'reponer' | 'nuevo') => void;
   onQuickReplenish?: (product: ProductItem) => void;
   onOpenRegistrarVenta?: (product?: ProductItem) => void;
   onOpenReserva?: (product?: ProductItem) => void;
@@ -277,35 +277,46 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
               Exportar
             </button>
 
-            {onOpenRegistrarVenta && (
+           {onOpenRegistrarVenta && (
               <button
                 id="btn-stock-registrar-venta"
                 onClick={() => onOpenRegistrarVenta()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95"
-                title="Registrar venta realizada por Melina (Descuenta stock)"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                title="Registrar venta y descontar stock"
               >
                 <ShoppingBag className="w-4 h-4" />
                 Registrar Venta
               </button>
             )}
 
+            {/* NUEVO BOTÓN: Reponer Existente */}
             <button
-              onClick={onOpenCrearStock}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#5e5d69] hover:text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-2xs active:scale-95 cursor-pointer"
-              title="Crear una nueva categoría de stock (ej. Camisas, Accesorios)"
+             onClick={() => {
+    // Le pasamos (categoría, null, 'reponer')
+    onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'reponer');
+  }}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-[#c9c4d3]/40 dark:border-[#2d2a3d] dark:bg-[#1e1b29] rounded-full text-xs font-bold text-[#42308f] dark:text-[#b8aee0] hover:bg-[#f8f9ff] dark:hover:bg-[#2a263d] transition-all shadow-sm cursor-pointer"
             >
-              <PackagePlus className="w-3.5 h-3.5" />
-              + Nueva Categoría
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Reponer Existente
             </button>
 
+            {/* NUEVO BOTÓN: Prenda Nueva */}
             <button
-              id="btn-stock-ingresar-prenda"
-              onClick={() => onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#42308f] rounded-full text-xs font-extrabold text-white hover:bg-[#5a49a8] transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="Ingresar prendas: reponer stock existente o cargar un nuevo modelo"
+              onClick={() => {
+    // Le pasamos (categoría, null, 'nuevo')
+    onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'nuevo');
+  }}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              + Ingresar al Stock
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              + Prenda Nueva
             </button>
           </div>
         </div>

@@ -46,6 +46,8 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          {/* Botón de Registrar Venta (Este lo mantenemos igual por las dudas) */}
           {onOpenRegistrarVenta && (
             <button
               id="btn-productos-registrar-venta"
@@ -57,6 +59,37 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
               Registrar Venta
             </button>
           )}
+
+          {/* NUEVO BOTÓN: Reponer Existente */}
+          <button
+            onClick={() => {
+               // Acá llamás a la función que abre el modal en la pestaña de Reposición
+               onOpenNuevoIngreso(); 
+            }}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-[#c9c4d3]/40 dark:border-[#2d2a3d] dark:bg-[#1e1b29] rounded-full text-xs font-bold text-[#42308f] dark:text-[#b8aee0] hover:bg-[#f8f9ff] dark:hover:bg-[#2a263d] transition-all shadow-sm cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            Reponer Existente
+          </button>
+
+          {/* NUEVO BOTÓN: + Prenda Nueva (Con tu color morado base) */}
+          <button
+            onClick={() => {
+               // Acá llamás a la función que abre el modal en la pestaña de Nuevo Ingreso
+               onOpenNuevoIngreso(); 
+            }}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            Prenda Nueva
+          </button>
+        </div>
           <button
             onClick={onOpenNuevoIngreso}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"

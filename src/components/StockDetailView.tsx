@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Download,
   Edit3,
   Plus,
   X,
@@ -109,6 +108,29 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     if (!map.has('Gris')) map.set('Gris', '#6b7280');
     return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
   }, [products]);
+
+  // Garantizamos que la categoría seleccionada SIEMPRE exista en las pestañas
+  const visibleCategories = useMemo(() => {
+    const cats = [...categories];
+    if (
+      selectedCategory &&
+      selectedCategory !== 'Todas' &&
+      !cats.some((c) => c.name.toLowerCase() === selectedCategory.toLowerCase())
+    ) {
+      cats.push({
+        name: selectedCategory,
+        totalItems: 0,
+        inStock: 0,
+        lowStock: 0,
+        outOfStock: 0,
+        actionType: 'detalles',
+        icon: 'tshirt',
+        description: `Colección de ${selectedCategory}`,
+        facilityDefault: 'Depósito Central',
+      });
+    }
+    return cats;
+  }, [categories, selectedCategory]);
 
   const scopedProducts = useMemo(() => {
     if (!selectedCategory || selectedCategory === 'Todas') return products;
@@ -236,7 +258,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     <div className="space-y-6">
       {/* Breadcrumbs & Header */}
       <div className="space-y-3">
-        {/* Breadcrumb path */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-bold text-[#5e5d69] uppercase tracking-wider">
           <button
             onClick={onNavigateToResumen}
@@ -256,7 +277,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           )}
         </nav>
 
-        {/* Title and Top Action Buttons - LIMPIO Y MINIMALISTA */}
+        {/* Title and Top Action Buttons */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight flex items-center gap-3">
@@ -267,16 +288,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </h1>
           </div>
 
-          {/* Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={onExport}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#5e5d69] hover:text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-2xs active:scale-95"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Exportar
-            </button>
-
             {onOpenRegistrarVenta && (
               <button
                 id="btn-stock-registrar-venta"
@@ -311,7 +323,6 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         </div>
       </div>
 
-      {/* BANNER DE FILTRO DE STOCK ACTIVO */}
       {statusFilter !== 'all' && (
         <div
           id="banner-atencion-stock"
@@ -397,7 +408,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             Seleccionar Tipo de Prenda / Stock
           </span>
           <span className="text-[11px] text-[#797583]">
-            {categories.length} stocks registrados
+            {visibleCategories.length} stocks registrados
           </span>
         </div>
 
@@ -406,47 +417,28 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             onClick={() => onNavigateToCategory('Todas')}
             className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
               selectedCategory === 'Todas'
-                ? 'bg-[#42308f] text-white shadow-sm ring-2 ring-[#42308f]/20'
+                ? 'bg-[#42308f] text-white shadow-md ring-2 ring-[#42308f]/30 scale-105'
                 : 'bg-[#f8f9ff] text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f] border border-[#c9c4d3]/30'
             }`}
           >
             <Layers className="w-4 h-4" />
             <span>Todos los Stocks</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                selectedCategory === 'Todas'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-white text-[#5e5d69] border border-gray-200'
-              }`}
-            >
-              {products.length}
-            </span>
           </button>
 
-          {categories.map((cat) => {
+          {visibleCategories.map((cat) => {
             const isSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
-            const catItemCount = products.filter((p) => p.category.toLowerCase() === cat.name.toLowerCase()).length;
             return (
               <button
                 key={cat.name}
                 onClick={() => onNavigateToCategory(cat.name)}
                 className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
                   isSelected
-                    ? 'bg-[#42308f] text-white shadow-sm ring-2 ring-[#42308f]/20'
+                    ? 'bg-[#42308f] text-white shadow-md ring-2 ring-[#42308f]/30 scale-105'
                     : 'bg-[#f8f9ff] text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f] border border-[#c9c4d3]/30'
                 }`}
               >
-                {getCategoryIcon(cat.icon, cat.name)}
+                {getCategoryIcon(cat.icon || 'tshirt', cat.name)}
                 <span>{cat.name}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                    isSelected
-                      ? 'bg-white/20 text-white'
-                      : 'bg-white text-[#5e5d69] border border-gray-200'
-                  }`}
-                >
-                  {catItemCount}
-                </span>
               </button>
             );
           })}
@@ -456,7 +448,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] border border-dashed border-[#42308f]/40 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Nuevo</span>
+            <span>Nuevo</span>
           </button>
         </div>
       </div>

@@ -891,6 +891,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {/* 1. Botón Reponer */}
                           <button
                             id={`btn-reponer-row-${prod.sku}`}
                             onClick={(e) => {
@@ -901,11 +902,15 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                                 onOpenCargarProducto(prod.category);
                               }
                             }}
-                            className="p-1.5 text-[#42308f] hover:text-[#5a49a8] hover:bg-[#eff4ff] rounded-lg transition-colors cursor-pointer"
-                            title="Reponer stock rápido (+ unidades)"
+                            className="group/btn relative p-1.5 text-[#42308f] hover:text-[#5a49a8] hover:bg-[#eff4ff] rounded-lg transition-colors cursor-pointer"
                           >
                             <Plus className="w-4 h-4" />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
+                              Reponer stock rápido
+                            </span>
                           </button>
+
+                          {/* 2. Botón Vender */}
                           {onOpenRegistrarVenta && (
                             <button
                               id={`btn-vender-row-${prod.sku}`}
@@ -914,20 +919,20 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                                 onOpenRegistrarVenta(prod);
                               }}
                               disabled={prod.stock === 0}
-                              className={`p-1.5 rounded-lg transition-colors ${
+                              className={`group/btn relative p-1.5 rounded-lg transition-colors ${
                                 prod.stock === 0
                                   ? 'text-gray-300 cursor-not-allowed'
                                   : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
                               }`}
-                              title={
-                                prod.stock === 0
-                                  ? 'Sin stock para vender'
-                                  : 'Vender prenda (Descontar stock)'
-                              }
                             >
                               <ShoppingBag className="w-4 h-4" />
+                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
+                                {prod.stock === 0 ? 'Sin stock para vender' : 'Vender prenda'}
+                              </span>
                             </button>
                           )}
+
+                          {/* 3. Botón Reservar */}
                           {onOpenReserva && (
                             <button
                               id={`btn-reservar-row-${prod.sku}`}
@@ -936,30 +941,34 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                                 onOpenReserva(prod);
                               }}
                               disabled={prod.stock === 0}
-                              className={`p-1.5 rounded-lg transition-colors ${
+                              className={`group/btn relative p-1.5 rounded-lg transition-colors ${
                                 prod.stock === 0
                                   ? 'text-gray-300 cursor-not-allowed'
                                   : 'text-[#42308f] hover:text-[#5a49a8] hover:bg-[#eff4ff]'
                               }`}
-                              title={
-                                prod.stock === 0
-                                  ? 'Sin stock para reservar'
-                                  : 'Reservar con seña (Apartar prenda en perchero)'
-                              }
                             >
                               <CalendarCheck className="w-4 h-4" />
+                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
+                                {prod.stock === 0 ? 'Sin stock para reservar' : 'Reservar con seña'}
+                              </span>
                             </button>
                           )}
+
+                          {/* 4. Botón Editar */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onEditStock(prod);
                             }}
-                            className="p-1.5 text-gray-400 hover:text-[#42308f] hover:bg-[#eff4ff] rounded-lg transition-colors"
-                            title="Editar prenda"
+                            className="group/btn relative p-1.5 text-gray-400 hover:text-[#42308f] hover:bg-[#eff4ff] rounded-lg transition-colors"
                           >
                             <Edit3 className="w-4 h-4" />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
+                              Editar prenda
+                            </span>
                           </button>
+
+                          {/* 5. Botón Eliminar */}
                           {onDeleteProduct && (
                             <button
                               id={`btn-eliminar-stock-${prod.sku}`}
@@ -967,10 +976,12 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                                 e.stopPropagation();
                                 setProductToDelete(prod);
                               }}
-                              className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="Eliminar prenda del inventario"
+                              className="group/btn relative p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
+                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
+                                Eliminar prenda del inventario
+                              </span>
                             </button>
                           )}
                         </div>

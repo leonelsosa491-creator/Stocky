@@ -351,12 +351,14 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
         <div className="flex justify-between items-start pb-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="font-heading text-xl font-extrabold text-[#0b1c30] tracking-tight flex items-center gap-2">
-              <span>{productToEdit ? 'Editar Prenda' : 'Ingresar al Stock'}</span>
+              <span>{productToEdit ? 'Editar Prenda' : activeTab === 'reponer' ? 'Reponer Stock Existente' : 'Cargar Prenda Nueva'}</span>
             </h2>
             <p className="text-xs text-[#5e5d69] mt-0.5">
               {productToEdit
                 ? `Modificando características de ${productToEdit.name} (${productToEdit.sku})`
-                : 'Sumá unidades a prendas que ya tenés o agregá un modelo nuevo al inventario.'}
+                : activeTab === 'reponer'
+                ? 'Sumá unidades a prendas que ya tenés en el inventario.'
+                : 'Agregá un modelo completamente nuevo al catálogo.'}
             </p>
           </div>
 
@@ -368,39 +370,7 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
           </button>
         </div>
 
-        {/* WORKFLOW TABS (Solo si NO estamos editando una prenda existente) */}
-        {!productToEdit && (
-          <div className="pt-4 pb-2 shrink-0">
-            <div className="grid grid-cols-2 p-1 bg-[#eff4ff] rounded-2xl border border-[#c9c4d3]/30">
-              <button
-                type="button"
-                onClick={() => setActiveTab('reponer')}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === 'reponer'
-                    ? 'bg-white text-[#42308f] shadow-xs font-extrabold'
-                    : 'text-[#5e5d69] hover:text-[#42308f]'
-                }`}
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${activeTab === 'reponer' ? 'text-[#42308f]' : ''}`} />
-                <span>Reponer Existente</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('nuevo')}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === 'nuevo'
-                    ? 'bg-white text-[#42308f] shadow-xs font-extrabold'
-                    : 'text-[#5e5d69] hover:text-[#42308f]'
-                }`}
-              >
-                <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'nuevo' ? 'text-[#42308f]' : ''}`} />
-                <span>+ Prenda Nueva</span>
-              </button>
-            </div>
-          </div>
-        )}
-
+        
         {/* MODAL BODY (Scrollable) */}
         <div className="overflow-y-auto flex-1 py-3 pr-1 space-y-4">
           {/* ============================================================== */}

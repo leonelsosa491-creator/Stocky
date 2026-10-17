@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
+  Download,
   Edit3,
   Plus,
   X,
@@ -39,7 +40,7 @@ interface StockDetailViewProps {
   onNavigateToCategory: (cat: string) => void;
   onNavigateToResumen: () => void;
   onOpenCrearStock: () => void;
-  onOpenCargarProducto: (cat?: string, productToEdit?: ProductItem | null) => void;
+  onOpenCargarProducto: (cat?: string, productToEdit?: ProductItem | null, mode?: 'reponer' | 'nuevo') => void;
   onQuickReplenish?: (product: ProductItem) => void;
   onOpenRegistrarVenta?: (product?: ProductItem) => void;
   onOpenReserva?: (product?: ProductItem) => void;
@@ -109,7 +110,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
   }, [products]);
 
-  // Garantizamos que la categoría seleccionada SIEMPRE exista en las pestañas
+  // Garantizamos que la categoría seleccionada SIEMPRE exista en las pestañas, aunque no tenga prendas
   const visibleCategories = useMemo(() => {
     const cats = [...categories];
     if (
@@ -277,7 +278,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           )}
         </nav>
 
-        {/* Title and Top Action Buttons */}
+        {/* Title and Top Action Buttons - LIMPIO Y MINIMALISTA */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight flex items-center gap-3">
@@ -288,6 +289,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </h1>
           </div>
 
+          {/* Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
             {onOpenRegistrarVenta && (
               <button
@@ -301,28 +303,38 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
               </button>
             )}
 
+            {/* NUEVO BOTÓN: Reponer Existente */}
             <button
-              onClick={onOpenCrearStock}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#c9c4d3]/60 rounded-full text-xs font-bold text-[#5e5d69] hover:text-[#42308f] hover:bg-[#eff4ff] transition-all shadow-2xs active:scale-95 cursor-pointer"
-              title="Crear una nueva categoría de stock (ej. Camisas, Accesorios)"
+              onClick={() => {
+                onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'reponer');
+              }}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-[#c9c4d3]/40 dark:border-[#2d2a3d] dark:bg-[#1e1b29] rounded-full text-xs font-bold text-[#42308f] dark:text-[#b8aee0] hover:bg-[#f8f9ff] dark:hover:bg-[#2a263d] transition-all shadow-sm cursor-pointer"
             >
-              <PackagePlus className="w-3.5 h-3.5" />
-              + Nueva Categoría
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Reponer Existente
             </button>
 
+            {/* NUEVO BOTÓN: Prenda Nueva */}
             <button
-              id="btn-stock-ingresar-prenda"
-              onClick={() => onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#42308f] rounded-full text-xs font-extrabold text-white hover:bg-[#5a49a8] transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="Ingresar prendas: reponer stock existente o cargar un nuevo modelo"
+              onClick={() => {
+                onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'nuevo');
+              }}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              + Ingresar al Stock
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              + Prenda Nueva
             </button>
           </div>
         </div>
       </div>
 
+      {/* BANNER DE FILTRO DE STOCK ACTIVO */}
       {statusFilter !== 'all' && (
         <div
           id="banner-atencion-stock"
@@ -445,7 +457,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
 
           <button
             onClick={onOpenCrearStock}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] border border-dashed border-[#42308f]/40 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] border border-dashed border-[#42308f]/40 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Nuevo</span>

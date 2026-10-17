@@ -85,28 +85,21 @@ export function safeRemove(key: string): void {
   }
 }
 
-function safeParse<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
+function safeParse<T>(jsonString: string | null, fallback: T): T {
+  if (!jsonString || jsonString === 'undefined' || jsonString === 'null') {
+    return fallback;
+  }
   try {
-    return JSON.parse(raw) as T;
-  } catch (err) {
-    console.warn('Error parsing JSON from localStorage:', err);
+    return JSON.parse(jsonString) as T;
+  } catch (e) {
     return fallback;
   }
 }
 
-/**
- * Loads the application state from localStorage.
- * If this is the very first time the app is run, it seeds localStorage with mock data
- * and marks the storage as initialized.
- * In any subsequent run, it returns whatever is currently in localStorage (even if empty `[]`),
- * ensuring user changes and resets are permanently preserved.
- */
 export function loadInitialAppData(): AppStoredData {
   const isInitialized = safeGet(STORAGE_KEYS.INITIALIZED);
 
   if (!isInitialized) {
-    // First time launch: populate localStorage with default seed data
     safeSet(STORAGE_KEYS.INITIALIZED, 'true');
     safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     safeSet(STORAGE_KEYS.CATEGORIES, INITIAL_CATEGORIES);
@@ -129,9 +122,9 @@ export function loadInitialAppData(): AppStoredData {
     };
   }
 
-  // Already initialized: strictly read what the user left stored
   const productsRaw = safeParse<ProductItem[]>(safeGet(STORAGE_KEYS.PRODUCTS), []);
-  const products = productsRaw.map((p) => {
+  const products = Array.isArray(productsRaw) ? productsRaw.map((p) => {
+    if (!p) return null;
     if (!p.colorFamily) {
       let family = p.colorName || 'Negro';
       const lower = family.toLowerCase();
@@ -155,32 +148,44 @@ export function loadInitialAppData(): AppStoredData {
       };
     }
     return p;
-  });
-  const categoriesBase = safeParse<CategorySummary[]>(
-    safeGet(STORAGE_KEYS.CATEGORIES),
-    INITIAL_CATEGORIES
-  );
+  }).filter(Boolean) as ProductItem[] : [];
+
+  const categoriesBase = safeParse<CategorySummary[]>(safeGet(STORAGE_KEYS.CATEGORIES), INITIAL_CATEGORIES);
   const movements = safeParse<StockMovement[]>(safeGet(STORAGE_KEYS.MOVEMENTS), []);
   const promotions = safeParse<Promotion[]>(safeGet(STORAGE_KEYS.PROMOTIONS), []);
   const reservas = safeParse<ReservaItem[]>(safeGet(STORAGE_KEYS.RESERVAS), []);
   const suppliers = safeParse<Supplier[]>(safeGet(STORAGE_KEYS.SUPPLIERS), []);
+  
+  // --- BLINDAJE DE USUARIOS ---
   const rawUsers = safeParse<AppUser[]>(safeGet(STORAGE_KEYS.USERS), INITIAL_USERS);
-  const users = rawUsers.map((u) => {
-    let role: Role = u.role as Role;
-    const roleStr = String(u.role);
+  const validUsersArray = Array.isArray(rawUsers) && rawUsers.length > 0 ? rawUsers : INITIAL_USERS;
+
+  const users = validUsersArray.map((u) => {
+    // Si viene un usuario corrupto o vacío, inyectamos uno de prueba para que no explote
+    if (!u) return INITIAL_USERS[0]; 
+    
+    let role: Role = (u?.role as Role) || 'admin';
+    const roleStr = String(u?.role || 'admin');
+    
     if (roleStr === 'administrador') role = 'admin';
     else if (roleStr === 'usuario normal') role = 'vendedora';
     else if (roleStr === 'desarrollador') role = 'developer';
     else if (roleStr !== 'admin' && roleStr !== 'developer' && roleStr !== 'vendedora') role = 'admin';
+    
     return { ...u, role };
   });
-  const rawCurrentUser = safeParse<AppUser>(safeGet(STORAGE_KEYS.CURRENT_USER), users[0] || INITIAL_USERS[0]);
-  let currentRole: Role = rawCurrentUser.role as Role;
-  const currRoleStr = String(rawCurrentUser.role);
+
+  const safeFallbackUser = users[0] || INITIAL_USERS[0] || { role: 'admin' } as AppUser;
+  const rawCurrentUser = safeParse<AppUser>(safeGet(STORAGE_KEYS.CURRENT_USER), safeFallbackUser) || safeFallbackUser;
+  
+  let currentRole: Role = (rawCurrentUser?.role as Role) || 'admin';
+  const currRoleStr = String(rawCurrentUser?.role || 'admin');
+  
   if (currRoleStr === 'administrador') currentRole = 'admin';
   else if (currRoleStr === 'usuario normal') currentRole = 'vendedora';
   else if (currRoleStr === 'desarrollador') currentRole = 'developer';
   else if (currRoleStr !== 'admin' && currRoleStr !== 'developer' && currRoleStr !== 'vendedora') currentRole = 'admin';
+  
   const currentUser = { ...rawCurrentUser, role: currentRole };
 
   return {
@@ -195,24 +200,15 @@ export function loadInitialAppData(): AppStoredData {
   };
 }
 
-/**
- * Loads store settings from localStorage
- */
 export function loadStoreSettings(): StoreSettings {
   const raw = safeGet(STORAGE_KEYS.SETTINGS);
   return safeParse<StoreSettings>(raw, DEFAULT_SETTINGS);
 }
 
-/**
- * Persists store settings to localStorage
- */
 export function saveStoreSettings(settings: StoreSettings): void {
   safeSet(STORAGE_KEYS.SETTINGS, settings);
 }
 
-/**
- * Clears all test data in localStorage, keeping storage marked as initialized.
- */
 export function clearAllStoredData(): void {
   safeSet(STORAGE_KEYS.INITIALIZED, 'true');
   safeSet(STORAGE_KEYS.PRODUCTS, []);
@@ -222,9 +218,6 @@ export function clearAllStoredData(): void {
   safeSet(STORAGE_KEYS.SUPPLIERS, []);
 }
 
-/**
- * Restores initial demo test data in localStorage.
- */
 export function restoreAllDemoData(): void {
   safeSet(STORAGE_KEYS.INITIALIZED, 'true');
   safeSet(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);

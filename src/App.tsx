@@ -181,9 +181,9 @@ export default function App() {
     setStockStatusFilter(filter);
     navigate('/stock');
     if (filter === 'bajo') {
-      showToast('Mostrando prendas con stock bajo');
+      showToast('Mostrando modelos con stock bajo');
     } else if (filter === 'agotado') {
-      showToast('Mostrando prendas agotadas');
+      showToast('Mostrando modelos agotados');
     }
   };
 

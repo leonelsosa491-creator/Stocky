@@ -3,13 +3,8 @@ import {
   X,
   PackagePlus,
   Shirt,
-  Sparkles,
-  Layers,
-  ShoppingBag,
-  Scissors,
-  Tag,
   Check,
-  Plus,
+  Plus
 } from 'lucide-react';
 import { CategorySummary, ProductItem } from '../types';
 import { MAIN_COLOR_FAMILIES } from '../utils/colors';
@@ -21,14 +16,58 @@ interface CrearStockModalProps {
   onCreateStock: (category: CategorySummary, initialProduct?: ProductItem) => void;
 }
 
+// ==========================================
+// ÍCONOS DE ROPA DIBUJADOS A MEDIDA (SVG)
+// ==========================================
+const IconoPantalon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 3h14l-1.5 18h-4L12 11l-1.5 10h-4L5 3z" />
+  </svg>
+);
+
+const IconoShort = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 4h14l-1 11h-4.5L12 9l-1.5 6H6L5 4z" />
+  </svg>
+);
+
+const IconoCampera = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 9l-3 6h3v6h14v-6h3l-3-6c0-2-1-3-4-3H9c-3 0-4 1-4 3z" />
+    <path d="M12 6v15" />
+  </svg>
+);
+
+const IconoBuzo = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 10l-3 6h3v5h14v-5h3l-3-6c0-2-1-3-4-3H9c-3 0-4 1-4 3z" />
+    <path d="M8 7c0-3 1.5-5 4-5s4 2 4 5" />
+    <path d="M8 15h8l1 4H7z" />
+  </svg>
+);
+
+const IconoCollar = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 3 C7 10 10 14 12 14.5 C14 14 17 10 17 3" />
+    <circle cx="12" cy="17.5" r="2.5" />
+  </svg>
+);
+
+const IconoLenceria = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9h18v1c0 4-3 6-5 8H8c-2-2-5-4-5-8V9z" />
+    <path d="M10 7.5L12 9l2-1.5v3L12 9l-2 1.5z" />
+  </svg>
+);
+
 const AVAILABLE_ICONS = [
-  { id: 'hoodie', label: 'Buzo / Prenda con capucha' },
-  { id: 'tshirt', label: 'Remera / Top' },
-  { id: 'pants', label: 'Pantalón / Inferior' },
-  { id: 'coat', label: 'Abrigo / Campera' },
-  { id: 'dress', label: 'Vestido / Gala' },
-  { id: 'shoes', label: 'Calzado / Zapatos' },
-  { id: 'sparkles', label: 'Accesorios / Especial' },
+  { id: 'remera', label: 'Remera', icon: <Shirt className="w-5 h-5" /> },
+  { id: 'pantalon', label: 'Pantalón', icon: <IconoPantalon /> },
+  { id: 'short', label: 'Short', icon: <IconoShort /> },
+  { id: 'campera', label: 'Campera', icon: <IconoCampera /> },
+  { id: 'buzo', label: 'Buzo', icon: <IconoBuzo /> },
+  { id: 'collar', label: 'Accesorio (Collar)', icon: <IconoCollar /> },
+  { id: 'lenceria', label: 'Lencería', icon: <IconoLenceria /> },
 ];
 
 export const CrearStockModal: React.FC<CrearStockModalProps> = ({
@@ -39,8 +78,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
 }) => {
   const [stockName, setStockName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('tshirt');
-  const [facilityDefault, setFacilityDefault] = useState('Perchero / Salón');
+  const [selectedIcon, setSelectedIcon] = useState('remera');
   const [nameError, setNameError] = useState('');
 
   // Initial product toggle & form
@@ -58,7 +96,6 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Auto-generate code suggestion when stock name or product name changes
   const handleStockNameChange = (val: string) => {
     setStockName(val);
     setNameError('');
@@ -111,7 +148,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
         season: prodSeason,
         stock: Number(prodStock) || 0,
         minStockThreshold: 10,
-        locationFacility: facilityDefault,
+        locationFacility: 'Perchero / Salón',
         locationDetails: 'Sector Nuevo Ingreso',
         price: Number(prodPrice) || 0,
         cost: Number(prodCost) || 0,
@@ -128,7 +165,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
       actionType: 'detalles',
       icon: selectedIcon,
       description: description.trim() || `Línea de ${trimmedName}`,
-      facilityDefault,
+      facilityDefault: 'Perchero / Salón',
     };
 
     onCreateStock(newCategory, initialProduct);
@@ -146,38 +183,35 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
             </div>
             <div>
               <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
-                Crear Nuevo Stock / Tipo de Prenda
+                Crear Nuevo Stock
               </h2>
               <p className="text-xs text-[#5e5d69]">
-                Registra un nuevo departamento de indumentaria y carga sus prendas
+                Registra un nuevo departamento de indumentaria y sus prendas
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100"
+            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 pt-4">
-          {/* Nombre y Descripción del Stock */}
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Nombre del Stock / Tipo de Prenda *
+                Nombre de la Colección / Stock *
               </label>
               <input
                 type="text"
                 required
-                placeholder="Ej. Vestidos, Camperas, Calzado, Sweaters, Polleras..."
+                placeholder="Ej. Vestidos, Camperas, Calzado, Sweaters..."
                 value={stockName}
                 onChange={(e) => handleStockNameChange(e.target.value)}
-                className={`w-full text-xs px-3.5 py-2.5 bg-[#f8f9ff] border rounded-xl focus:outline-none transition-colors ${
-                  nameError
-                    ? 'border-rose-400 focus:border-rose-500'
-                    : 'border-[#c9c4d3]/60 focus:border-[#42308f] focus:bg-white'
+                className={`w-full text-xs px-3.5 py-2.5 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none transition-colors ${
+                  nameError ? 'border-rose-400 focus:border-rose-500' : ''
                 }`}
               />
               {nameError && (
@@ -189,52 +223,41 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Descripción / Notas de Colección
+                Descripción (Opcional)
               </label>
               <input
                 type="text"
                 placeholder="Ej. Colección de temporada, prendas de alta gama o sastrería"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full text-xs px-3.5 py-2 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none"
+                className="w-full text-xs px-3.5 py-2 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none transition-colors"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Ubicación Predeterminada
-                </label>
-                <select
-                  value={facilityDefault}
-                  onChange={(e) => setFacilityDefault(e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:outline-none font-medium"
-                >
-                  <option value="Perchero / Salón">Perchero / Salón</option>
-                  <option value="Depósito / Trastienda">Depósito / Trastienda</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Tipo de Prenda / Ícono
-                </label>
-                <select
-                  value={selectedIcon}
-                  onChange={(e) => setSelectedIcon(e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:outline-none"
-                >
-                  {AVAILABLE_ICONS.map((ico) => (
-                    <option key={ico.id} value={ico.id}>
-                      {ico.label}
-                    </option>
-                  ))}
-                </select>
+            <div className="pt-1">
+              <label className="block text-xs font-bold text-gray-700 mb-2">
+                Ícono Visual (Para el menú)
+              </label>
+              <div className="flex flex-wrap gap-2.5">
+                {AVAILABLE_ICONS.map((ico) => (
+                  <button
+                    key={ico.id}
+                    type="button"
+                    onClick={() => setSelectedIcon(ico.id)}
+                    title={ico.label}
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                      selectedIcon === ico.id
+                        ? 'bg-[#42308f] text-white shadow-md ring-2 ring-[#42308f]/30 scale-105'
+                        : 'bg-[#f8f9ff] text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f] border border-[#c9c4d3]/30'
+                    }`}
+                  >
+                    {ico.icon}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Cargar Primer Producto Toggle */}
           <div className="pt-2 border-t border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <label className="flex items-center gap-2.5 cursor-pointer">
@@ -242,10 +265,10 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                   type="checkbox"
                   checked={addInitialProduct}
                   onChange={(e) => setAddInitialProduct(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#42308f] focus:ring-[#42308f]"
+                  className="w-4 h-4 rounded text-[#42308f] focus:ring-[#42308f] bg-white border-gray-300"
                 />
                 <span className="text-xs font-bold text-[#0b1c30]">
-                  Cargar primera prenda / producto a este stock ahora
+                  Cargar primera prenda a este stock ahora
                 </span>
               </label>
             </div>
@@ -265,7 +288,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                     <input
                       type="text"
                       required={addInitialProduct}
-                      placeholder="Ej. Vestido Largo Satén, Campera Parka..."
+                      placeholder="Ej. Remera Básica..."
                       value={prodName}
                       onChange={(e) => setProdName(e.target.value)}
                       className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
@@ -281,12 +304,11 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                       placeholder="Ej. #501"
                       value={prodSku}
                       onChange={(e) => setProdSku(e.target.value)}
-                      className="w-full text-xs font-mono font-bold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
+                      className="w-full text-xs font-mono font-bold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none text-[#42308f]"
                     />
                   </div>
                 </div>
 
-                {/* Talle y Temporada */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-gray-700 mb-1">
@@ -298,7 +320,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                           key={sz}
                           type="button"
                           onClick={() => setProdSize(sz)}
-                          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                             prodSize === sz
                               ? 'bg-[#42308f] text-white shadow-xs'
                               : 'bg-white border border-gray-200 text-gray-700 hover:border-[#42308f]'
@@ -327,7 +349,6 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                   </div>
                 </div>
 
-                {/* Color Seleccionable: Familia y Color Comercial */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="block text-[11px] font-bold text-gray-700">
@@ -375,13 +396,9 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                       onChange={(e) => setProdSpecificColor(e.target.value)}
                       className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
                     />
-                    <span className="text-[10px] text-gray-500 mt-0.5 block">
-                      Especifica el tono boutique para etiquetas y búsqueda (ej. si elegiste Rojo, podés detallar &quot;Bordó&quot;).
-                    </span>
                   </div>
                 </div>
 
-                {/* Stock y Precio */}
                 <div className="grid grid-cols-3 gap-2.5 pt-1">
                   <div>
                     <label className="block text-[11px] font-bold text-gray-700 mb-1">
@@ -426,21 +443,20 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
             )}
           </div>
 
-          {/* Submit Actions */}
           <div className="pt-3 flex justify-end items-center gap-2.5 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              className="px-5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] shadow-sm transition-all flex items-center gap-2 active:scale-95"
+              className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Crear Stock y Guardar
+              Crear Stock
             </button>
           </div>
         </form>

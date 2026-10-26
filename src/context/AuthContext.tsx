@@ -203,7 +203,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/recuperar-clave`,
     });
-    if (error) throw error;
+    if (error) {
+      if (error.message?.toLowerCase().includes('rate limit')) {
+        throw new Error('Se enviaron demasiados correos. Esperá unos minutos y volvé a intentar.');
+      }
+      throw error;
+    }
   };
 
   const updatePassword = async (newPassword: string) => {

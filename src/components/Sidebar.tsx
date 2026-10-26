@@ -151,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* PERMISO TIPO DJANGO: Solo Admin y Developer (Dueña) pueden ver Reportes */}
           <Can role={['developer', 'admin']}>
             <button
-              onClick={() => handleNav('/reportes-ventas', 'resumen')}
+              onClick={() => handleNav('/reportes-ventas', 'reportes' as NavScreen)}
               title={isCollapsed ? "Reportes" : undefined}
               className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
                 currentPath === '/reportes-ventas'

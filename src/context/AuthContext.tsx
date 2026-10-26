@@ -1,163 +1,209 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { Role } from '../types';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+// @ts-ignore - Ignoramos validación de tipos si supabaseClient es .js puro
 import { supabase } from '../supabase/supabaseClient';
+import { AppUser, Role } from '../types';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatar?: string;
-  status: 'activo' | 'inactivo';
-  lastActive?: string;
+interface RegisterExtra {
+  businessName?: string; // Dueña/o: nombre de la indumentaria (crea una boutique nueva)
+  invitationCode?: string; // Encargada/o o empleada/o: se une a una boutique existente
+  firstName?: string;
+  lastName?: string;
+  username?: string;
 }
 
-export interface AuthContextType {
-  user: User | null;
+interface AuthContextType {
+  user: AppUser | null;
   role: Role | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
-  login: (email: string, password?: string) => Promise<boolean>;
+  login: (identifier: string, password: string) => Promise<string>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role?: Role, // Se ignora: el rol lo define el servidor (dueña/o = admin, o el del código)
+    extra?: RegisterExtra
+  ) => Promise<void>;
   logout: () => Promise<void>;
-  hasRole: (allowedRoles: Role[]) => boolean;
-  isDeveloper: boolean;
-  isAdmin: boolean;
-  isVendedora: boolean;
-  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Ahora recibimos el authUser completo para poder leer sus metadatos
-  const fetchProfile = async (authUser: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('perfiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
+  // El rol y la boutique se leen de la tabla "perfiles" (no de la metadata del
+  // navegador, que cualquiera puede modificar).
+  const cargarUsuario = async (sbUser: any): Promise<AppUser> => {
+    const email = sbUser.email || '';
 
-      // Si el error es distinto a "No se encontraron filas", lo lanzamos
-      if (error && error.code !== 'PGRST116') throw error;
+    const { data: perfil } = await supabase
+      .from('perfiles')
+      .select('rol, username, nombre, apellido, boutique_id, boutiques(nombre)')
+      .eq('id', sbUser.id)
+      .maybeSingle();
 
-      // Extraemos los metadatos donde guardamos tu foto y tu nombre real
-      const metadata = authUser.user_metadata || {};
+    const boutique = Array.isArray(perfil?.boutiques) ? perfil?.boutiques[0] : perfil?.boutiques;
+    const nombreCompleto = [perfil?.nombre, perfil?.apellido].filter(Boolean).join(' ');
 
-      setUser({
-        id: authUser.id,
-        // Prioridad 1: Tu nombre personalizado. Prioridad 2: El de la tabla. Prioridad 3: Tu correo.
-        name: metadata.name || data?.nombre_completo || authUser.email.split('@')[0],
-        email: authUser.email,
-        role: (data?.rol as Role) || 'vendedora',
-        status: data?.estado || 'activo',
-        avatar: metadata.avatar, // <-- AQUÍ CONECTAMOS EL AVATAR
-        lastActive: 'En línea',
-      });
-    } catch (err) {
-      console.error('Error al cargar perfil de Supabase:', err);
-      
-      const metadata = authUser.user_metadata || {};
-      
-      // Fallback seguro usando tus metadatos si falla la tabla perfiles
-      setUser({
-        id: authUser.id,
-        name: metadata.name || authUser.email.split('@')[0],
-        email: authUser.email,
-        role: 'vendedora', 
-        avatar: metadata.avatar,
-        status: 'activo',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    return {
+      id: sbUser.id,
+      name: nombreCompleto || sbUser.user_metadata?.name || email.split('@')[0] || 'Usuario',
+      email,
+      role: (perfil?.rol as Role) || 'vendedora', // Sin perfil: el rol con menos permisos
+      username: perfil?.username ?? undefined,
+      boutiqueId: perfil?.boutique_id ?? undefined,
+      businessName: boutique?.nombre ?? undefined,
+      status: 'activo',
+    };
   };
 
-  // Inicialización de sesión real con Supabase
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let activo = true;
+
+    // 1. Revisar sesión activa al abrir la app
+    supabase.auth.getSession().then(async (response: any) => {
+      const session = response?.data?.session;
       if (session?.user) {
-        // Le pasamos el objeto user completo en vez de solo id y email
-        fetchProfile(session.user);
-      } else {
-        setIsLoading(false);
+        const u = await cargarUsuario(session.user);
+        if (activo) setUser(u);
       }
+      if (activo) setIsLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // 2. Escuchar cambios de login/registro/logout
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (session?.user) {
-        await fetchProfile(session.user);
+        // setTimeout: no se deben hacer consultas a Supabase dentro de este callback
+        setTimeout(async () => {
+          const u = await cargarUsuario(session.user);
+          if (activo) {
+            setUser(u);
+            setIsLoading(false);
+          }
+        }, 0);
       } else {
         setUser(null);
         setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      activo = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password?: string): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password: password || '',
+  // Busca el correo asociado a un usuario (función SQL get_email_by_username)
+  const findEmailByUsername = async (username: string): Promise<string | null> => {
+    const { data, error } = await supabase.rpc('get_email_by_username', {
+      p_username: username.trim(),
+    });
+    if (error) throw error;
+    return (data as string | null) || null;
+  };
+
+  // Acepta usuario o correo. Devuelve el correo con el que se inició sesión.
+  const login = async (identifier: string, password: string): Promise<string> => {
+    const value = identifier.trim();
+    let email = value;
+
+    if (!value.includes('@')) {
+      const found = await findEmailByUsername(value);
+      if (!found) throw new Error('Usuario o contraseña incorrectos.');
+      email = found;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      if (error.message?.toLowerCase().includes('invalid login credentials')) {
+        throw new Error('Usuario o contraseña incorrectos.');
+      }
+      throw error;
+    }
+    if (data.user) {
+      setUser(await cargarUsuario(data.user));
+    }
+    return email;
+  };
+
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    _role?: Role,
+    extra: RegisterExtra = {}
+  ) => {
+    const username = extra.username?.trim().toLowerCase();
+    if (username) {
+      const taken = await findEmailByUsername(username);
+      if (taken) throw new Error('Ese usuario ya está en uso.');
+    }
+
+    // Con código de invitación: se valida antes de crear la cuenta
+    const invitationCode = extra.invitationCode?.trim().toUpperCase();
+    if (invitationCode) {
+      const { data: invitacion, error: invError } = await supabase.rpc('validar_invitacion', {
+        p_codigo: invitationCode,
       });
-      
-      if (error) throw error;
-      return true;
-    } catch (err: any) {
-      setError('Correo o contraseña incorrectos.');
-      setIsLoading(false);
-      return false;
+      if (invError) throw invError;
+      if (!invitacion) throw new Error('Código de invitación inválido o vencido.');
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          business_name: invitationCode ? undefined : extra.businessName,
+          invitation_code: invitationCode,
+          first_name: extra.firstName,
+          last_name: extra.lastName,
+          username,
+        },
+      },
+    });
+    if (error) throw error;
+    if (!data.session) {
+      throw new Error('Cuenta creada. Revisá tu correo para confirmarla y luego iniciá sesión.');
+    }
+    if (data.user) {
+      setUser(await cargarUsuario(data.user));
     }
   };
 
-  const logout = async (): Promise<void> => {
-    setIsLoading(true);
-    await supabase.auth.signOut();
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
     setUser(null);
-    setIsLoading(false);
   };
 
-  const hasRole = (allowedRoles: Role[]): boolean => {
-    if (!user) return false;
-    return allowedRoles.includes(user.role);
-  };
-
-  const clearError = () => setError(null);
-
-  const value = useMemo<AuthContextType>(
-    () => ({
-      user,
-      role: user ? user.role : null,
-      isAuthenticated: !!user,
-      isLoading,
-      error,
-      login,
-      logout,
-      hasRole,
-      isDeveloper: user?.role === 'developer',
-      isAdmin: user?.role === 'admin',
-      isVendedora: user?.role === 'vendedora',
-      clearError,
-    }),
-    [user, isLoading, error]
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        role: user?.role || null,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth debe ser utilizado dentro de un AuthProvider');
+    throw new Error('useAuth debe usarse dentro de un AuthProvider');
   }
   return context;
 };

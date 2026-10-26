@@ -7,6 +7,7 @@ export type NavScreen =
   | 'promociones' 
   | 'proveedores' 
   | 'configuracion'
+  | 'reportes'
   | 'login';
 
 export type StockStatus = 'ok' | 'bajo' | 'agotado';
@@ -126,7 +127,19 @@ export interface AppUser {
   name: string;
   email: string;
   role: Role;
+  username?: string;
+  boutiqueId?: string; // Boutique a la que pertenece la cuenta
+  businessName?: string; // Nombre de la indumentaria
   avatar?: string;
   lastActive?: string;
   status: 'activo' | 'inactivo';
+}
+
+export interface Invitacion {
+  id: string;
+  codigo: string;
+  rol: 'admin' | 'vendedora';
+  creado_en: string;
+  expira_en: string;
+  usado_por: string | null;
 }

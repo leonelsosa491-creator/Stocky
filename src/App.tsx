@@ -17,7 +17,6 @@ import {
   INITIAL_PROMOTIONS,
   INITIAL_RESERVAS,
   INITIAL_SUPPLIERS,
-  INITIAL_USERS,
 } from './data/mockData';
 import {
   loadInitialAppData,
@@ -26,6 +25,8 @@ import {
   clearAllStoredData,
   restoreAllDemoData,
 } from './utils/storage';
+// @ts-ignore
+import { supabase } from './supabase/supabaseClient';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { ResumenView } from './components/ResumenView';
@@ -49,15 +50,55 @@ import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react
 import { useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { RoleRoute } from './components/auth/RoleRoute';
-import { Can } from './components/auth/Can';
 import { ReportesVentasView } from './components/ReportesVentasView';
 import { ConfiguracionSistemaView } from './components/ConfiguracionSistemaView';
 import { CheckCircle2 } from 'lucide-react';
 
+// Traductores entre Supabase (snake_case) y TypeScript (camelCase)
+const mapDbToProduct = (row: any): ProductItem => ({
+  sku: row.sku,
+  name: row.name,
+  description: row.description || '',
+  category: row.category,
+  colorName: row.color_name,
+  colorFamily: row.color_family || undefined,
+  specificColor: row.specific_color || undefined,
+  colorHex: row.color_hex,
+  size: row.size,
+  season: row.season,
+  stock: Number(row.stock),
+  minStockThreshold: Number(row.min_stock_threshold ?? 10),
+  locationFacility: row.location_facility,
+  locationDetails: row.location_details || '',
+  price: Number(row.price),
+  cost: Number(row.cost),
+  status: row.status as ProductItem['status'],
+});
+
+const mapProductToDb = (prod: ProductItem) => ({
+  sku: prod.sku,
+  name: prod.name,
+  description: prod.description || '',
+  category: prod.category,
+  color_name: prod.colorName,
+  color_family: prod.colorFamily || null,
+  specific_color: prod.specificColor || null,
+  color_hex: prod.colorHex,
+  size: prod.size,
+  season: prod.season,
+  stock: prod.stock,
+  min_stock_threshold: prod.minStockThreshold,
+  location_facility: prod.locationFacility,
+  location_details: prod.locationDetails || '',
+  price: prod.price,
+  cost: prod.cost,
+  status: prod.status,
+});
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, role, logout, isAuthenticated } = useAuth();
+  const { user, logout } = useAuth();
 
   const currentScreen = useMemo<NavScreen>(() => {
     const path = location.pathname;
@@ -68,14 +109,13 @@ export default function App() {
     if (path.startsWith('/promociones')) return 'promociones';
     if (path.startsWith('/proveedores')) return 'proveedores';
     if (path.startsWith('/configuracion')) return 'configuracion';
-    if (path.startsWith('/reportes-ventas')) return 'resumen';
+    if (path.startsWith('/reportes-ventas')) return 'reportes'; 
     return 'resumen';
   }, [location.pathname]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('Buzos');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [initialData] = useState(() => loadInitialAppData());
@@ -88,6 +128,58 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => initialData.suppliers);
   const [users, setUsers] = useState<AppUser[]>(() => initialData.users);
   const [currentUser, setCurrentUser] = useState<AppUser>(() => initialData.currentUser);
+
+  // Sincronizar usuario activo
+  useEffect(() => {
+    if (user) {
+      setCurrentUser(user);
+    }
+  }, [user]);
+
+  // Cargar productos de Supabase al iniciar la app
+  useEffect(() => {
+    const fetchProductosFromSupabase = async () => {
+      const { data, error } = await supabase
+        .from('productos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar productos de Supabase:', error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setProducts(data.map(mapDbToProduct));
+      } else if (data && data.length === 0 && initialData.products.length > 0) {
+        // Si está vacía la tabla, subimos los datos de prueba iniciales
+        const initialPayload = initialData.products.map(mapProductToDb);
+        await supabase.from('productos').upsert(initialPayload, { onConflict: 'sku' });
+      }
+    };
+
+    fetchProductosFromSupabase();
+  }, []);
+
+  // Funciones auxiliares de sincronización con Supabase
+  const syncProductToSupabase = async (prod: ProductItem) => {
+    const { error } = await supabase
+      .from('productos')
+      .upsert(mapProductToDb(prod), { onConflict: 'sku' });
+    if (error) console.error('Error guardando en Supabase:', error.message);
+  };
+
+  const syncBatchProductsToSupabase = async (batch: ProductItem[]) => {
+    const { error } = await supabase
+      .from('productos')
+      .upsert(batch.map(mapProductToDb), { onConflict: 'sku' });
+    if (error) console.error('Error guardando lote en Supabase:', error.message);
+  };
+
+  const deleteProductFromSupabase = async (sku: string) => {
+    const { error } = await supabase.from('productos').delete().eq('sku', sku);
+    if (error) console.error('Error eliminando en Supabase:', error.message);
+  };
 
   useEffect(() => { safeSet(STORAGE_KEYS.PRODUCTS, products); }, [products]);
   useEffect(() => { safeSet(STORAGE_KEYS.CATEGORIES, categoriesBase); }, [categoriesBase]);
@@ -197,6 +289,7 @@ export default function App() {
   const handleAddStock = (data: any) => {
     let updatedProducts = [...products];
     const existingIndex = updatedProducts.findIndex((p) => p.sku === data.sku);
+    let targetProd: ProductItem;
 
     if (existingIndex >= 0) {
       const existing = updatedProducts[existingIndex];
@@ -205,15 +298,16 @@ export default function App() {
       if (newStock === 0) status = 'agotado';
       else if (newStock <= existing.minStockThreshold) status = 'bajo';
 
-      updatedProducts[existingIndex] = {
+      targetProd = {
         ...existing,
         stock: newStock,
         status,
         locationFacility: data.locationFacility,
         locationDetails: data.locationDetails,
       };
+      updatedProducts[existingIndex] = targetProd;
     } else {
-      updatedProducts.unshift({
+      targetProd = {
         sku: data.sku,
         name: data.productName,
         description: `Confección ${data.supplier}`,
@@ -229,10 +323,12 @@ export default function App() {
         price: 21000,
         cost: 9000,
         status: 'ok',
-      });
+      };
+      updatedProducts.unshift(targetProd);
     }
 
     setProducts(updatedProducts);
+    syncProductToSupabase(targetProd);
 
     const dateInfo = getMovementDateInfo();
     const newMovement: StockMovement = {
@@ -243,7 +339,7 @@ export default function App() {
       productName: data.productName,
       type: 'ingreso',
       quantity: data.quantity,
-      user: 'Melina Gomez',
+      user: currentUser.name,
       sourceOrDestination: data.supplier,
       notes: data.notes || 'Ingreso de mercadería',
     };
@@ -253,6 +349,8 @@ export default function App() {
 
   const handleSaveProduct = (updated: ProductItem) => {
     setProducts((prev) => prev.map((p) => (p.sku === updated.sku ? updated : p)));
+    syncProductToSupabase(updated);
+
     const original = products.find((p) => p.sku === updated.sku);
     if (original && original.stock !== updated.stock) {
       const diff = updated.stock - original.stock;
@@ -265,7 +363,7 @@ export default function App() {
         productName: updated.name,
         type: 'ajuste',
         quantity: diff,
-        user: 'Melina Gomez',
+        user: currentUser.name,
         sourceOrDestination: updated.locationFacility,
         notes: 'Ajuste manual de stock',
       };
@@ -282,7 +380,9 @@ export default function App() {
           let status: ProductItem['status'] = 'ok';
           if (safeStock === 0) status = 'agotado';
           else if (safeStock <= p.minStockThreshold) status = 'bajo';
-          return { ...p, stock: safeStock, status };
+          const updated = { ...p, stock: safeStock, status };
+          syncProductToSupabase(updated);
+          return updated;
         }
         return p;
       })
@@ -343,6 +443,8 @@ export default function App() {
     setCategoriesBase((prev) => [...prev, newCat]);
     if (initialProduct) {
       setProducts((prev) => [initialProduct, ...prev]);
+      syncProductToSupabase(initialProduct);
+
       const dateInfo = getMovementDateInfo();
       const newMovement: StockMovement = {
         id: `MOV-${Date.now().toString().slice(-4)}`,
@@ -352,7 +454,7 @@ export default function App() {
         productName: initialProduct.name,
         type: 'ingreso',
         quantity: initialProduct.stock,
-        user: 'Melina Gomez',
+        user: currentUser.name,
         sourceOrDestination: initialProduct.locationFacility,
         notes: `Carga inicial de stock para ${newCat.name}`,
       };
@@ -384,7 +486,9 @@ export default function App() {
           let status: ProductItem['status'] = 'ok';
           if (newStock === 0) status = 'agotado';
           else if (newStock <= p.minStockThreshold) status = 'bajo';
-          return { ...p, stock: newStock, status, locationFacility: data.locationFacility || p.locationFacility };
+          const updated = { ...p, stock: newStock, status, locationFacility: data.locationFacility || p.locationFacility };
+          syncProductToSupabase(updated);
+          return updated;
         }
         return p;
       })
@@ -398,7 +502,7 @@ export default function App() {
       productName: data.productName,
       type: 'ingreso',
       quantity: data.quantity,
-      user: 'Melina Gomez',
+      user: currentUser.name,
       sourceOrDestination: data.locationFacility || 'Depósito Central',
       notes: `${data.notes || 'Reposición'} (${data.supplier || 'Taller Principal'})`,
     };
@@ -408,6 +512,8 @@ export default function App() {
 
   const handleSaveBatchProducts = (batch: ProductItem[]) => {
     setProducts((prev) => [...batch, ...prev]);
+    syncBatchProductsToSupabase(batch);
+
     const totalQty = batch.reduce((sum, p) => sum + p.stock, 0);
     const firstCat = batch[0].category;
     const dateInfo = getMovementDateInfo();
@@ -419,7 +525,7 @@ export default function App() {
       productName: `${batch[0].name.split('(')[0].trim()} (Curva ${batch.length} talles)`,
       type: 'ingreso',
       quantity: totalQty,
-      user: 'Melina Gomez',
+      user: currentUser.name,
       sourceOrDestination: batch[0].locationFacility,
       notes: `Carga de curva de talles para ${firstCat}`,
     };
@@ -436,6 +542,8 @@ export default function App() {
 
   const handleSaveCargarProducto = (prod: ProductItem) => {
     const existingIndex = products.findIndex((p) => p.sku === prod.sku);
+    syncProductToSupabase(prod);
+
     if (existingIndex >= 0) {
       setProducts((prev) => prev.map((p) => (p.sku === prod.sku ? prod : p)));
       showToast(`Prenda "${prod.name}" (${prod.sku}) actualizada`);
@@ -450,7 +558,7 @@ export default function App() {
         productName: prod.name,
         type: 'ingreso',
         quantity: prod.stock,
-        user: 'Melina Gomez',
+        user: currentUser.name,
         sourceOrDestination: prod.locationFacility,
         notes: `Carga directa a stock de ${prod.category}`,
       };
@@ -462,6 +570,8 @@ export default function App() {
   const handleConfirmSale = (saleData: any) => {
     const soldSkuMap = new Map<string, number>();
     saleData.items.forEach((item: any) => { soldSkuMap.set(item.sku, (soldSkuMap.get(item.sku) || 0) + item.quantity); });
+    
+    const modifiedProducts: ProductItem[] = [];
     const updatedProducts = products.map((prod) => {
       const soldQty = soldSkuMap.get(prod.sku);
       if (soldQty) {
@@ -469,11 +579,16 @@ export default function App() {
         let status: ProductItem['status'] = 'ok';
         if (newStock === 0) status = 'agotado';
         else if (newStock <= prod.minStockThreshold) status = 'bajo';
-        return { ...prod, stock: newStock, status };
+        const updated = { ...prod, stock: newStock, status };
+        modifiedProducts.push(updated);
+        return updated;
       }
       return prod;
     });
     setProducts(updatedProducts);
+    if (modifiedProducts.length > 0) {
+      syncBatchProductsToSupabase(modifiedProducts);
+    }
 
     const dateInfo = getMovementDateInfo();
     const newMovements: StockMovement[] = saleData.items.map((item: any, idx: number) => ({
@@ -484,12 +599,12 @@ export default function App() {
       productName: item.productName,
       type: 'egreso',
       quantity: -item.quantity,
-      user: 'Melina Gomez',
+      user: currentUser.name,
       sourceOrDestination: `${saleData.channel} #${saleData.ticketNumber}`,
       notes: `${saleData.paymentDetails || `Venta con ${saleData.paymentMethod}`} • Cliente: ${saleData.customerName}${saleData.customerPhone ? ` (Tel/WA: ${saleData.customerPhone})` : ''}${saleData.saleNotes ? ` • Nota: ${saleData.saleNotes}` : ''} ($${item.subtotal.toLocaleString('es-AR')})`,
     }));
     setMovements((prev) => [...newMovements, ...prev]);
-    showToast(`¡Venta de Melina registrada! -${saleData.totalUnits} prendas descontadas del stock`);
+    showToast(`¡Venta registrada! -${saleData.totalUnits} prendas descontadas del stock`);
   };
 
   const handleCreateReserva = (reservaData: any) => {
@@ -498,7 +613,9 @@ export default function App() {
     setProducts((prev) => prev.map((p) => {
       if (p.sku === reservaData.garmentSku) {
         const nextStock = Math.max(0, p.stock - reservaData.quantity);
-        return { ...p, stock: nextStock, status: nextStock === 0 ? 'agotado' : nextStock <= p.minStockThreshold ? 'bajo' : 'ok' };
+        const updated: ProductItem = { ...p, stock: nextStock, status: nextStock === 0 ? 'agotado' : nextStock <= p.minStockThreshold ? 'bajo' : 'ok' };
+        syncProductToSupabase(updated);
+        return updated;
       }
       return p;
     }));
@@ -535,7 +652,9 @@ export default function App() {
       setProducts((prev) => prev.map((p) => {
         if (p.sku === target.garmentSku) {
           const nextStock = p.stock + target.quantity;
-          return { ...p, stock: nextStock, status: nextStock <= p.minStockThreshold ? 'bajo' : 'ok' };
+          const updated: ProductItem = { ...p, stock: nextStock, status: nextStock <= p.minStockThreshold ? 'bajo' : 'ok' };
+          syncProductToSupabase(updated);
+          return updated;
         }
         return p;
       }));
@@ -553,7 +672,9 @@ export default function App() {
       const itemCaducado = caducadas.find((c) => c.garmentSku === p.sku);
       if (itemCaducado) {
         const nextStock = p.stock + itemCaducado.quantity;
-        return { ...p, stock: nextStock, status: nextStock <= p.minStockThreshold ? 'bajo' : 'ok' };
+        const updated: ProductItem = { ...p, stock: nextStock, status: nextStock <= p.minStockThreshold ? 'bajo' : 'ok' };
+        syncProductToSupabase(updated);
+        return updated;
       }
       return p;
     }));
@@ -604,27 +725,30 @@ export default function App() {
   const handleDeleteProduct = (sku: string) => {
     const target = products.find((p) => p.sku === sku);
     setProducts((prev) => prev.filter((p) => p.sku !== sku));
+    deleteProductFromSupabase(sku);
     showToast(`Prenda "${target?.name || sku}" eliminada del inventario.`);
   };
 
-  const handleClearAllTestData = () => {
+  const handleClearAllTestData = async () => {
     clearAllStoredData();
     setProducts([]); setMovements([]); setReservas([]); setPromotions([]); setSuppliers([]);
     setEditingProduct(null); setProductForVenta(null); setProductForReserva(null);
+    await supabase.from('productos').delete().neq('sku', '');
     showToast('Se eliminaron todas las prendas, stock, movimientos, reservas, promociones y proveedores.');
   };
 
-  const handleRestoreTestData = () => {
+  const handleRestoreTestData = async () => {
     restoreAllDemoData();
     setProducts(INITIAL_PRODUCTS); setMovements(INITIAL_MOVEMENTS); setReservas(INITIAL_RESERVAS); setPromotions(INITIAL_PROMOTIONS); setSuppliers(INITIAL_SUPPLIERS); setCategoriesBase(INITIAL_CATEGORIES);
     setSelectedCategory('Buzos');
+    await syncBatchProductsToSupabase(INITIAL_PRODUCTS);
     showToast('¡Datos de prueba iniciales restaurados con éxito!');
   };
 
   return (
     <>
       <Routes>
-        <Route path="/login" element={<LoginView onLoginSuccess={(email) => { showToast(`¡Bienvenida de vuelta, ${email.split('@')[0]}!`); }} onBackToApp={() => navigate('/dashboard')} />} />
+        <Route path="/login" element={<LoginView onLoginSuccess={(email) => { showToast(`¡Bienvenida, ${email.split('@')[0]}!`); }} onBackToApp={() => navigate('/dashboard')} />} />
         <Route element={<ProtectedRoute />}>
           <Route
             element={
@@ -633,7 +757,7 @@ export default function App() {
                   currentScreen={currentScreen}
                   onNavigate={(screen) => {
                     if (screen === 'stock' && currentScreen !== 'stock') { setStockStatusFilter('all'); }
-                    const routeMap: Record<NavScreen, string> = { resumen: '/dashboard', stock: '/stock', productos: '/productos', movimientos: '/movimientos', reservas: '/reservas', promociones: '/promociones', proveedores: '/proveedores', configuracion: '/configuracion', login: '/login' };
+                    const routeMap: Record<NavScreen, string> = { resumen: '/dashboard', stock: '/stock', productos: '/productos', movimientos: '/movimientos', reservas: '/reservas', promociones: '/promociones', proveedores: '/proveedores', configuracion: '/configuracion', login: '/login', reportes: '/reportes-ventas' };
                     navigate(routeMap[screen] || '/dashboard');
                   }}
                   isOpenMobile={isMobileSidebarOpen}
@@ -649,7 +773,7 @@ export default function App() {
                     onSearchChange={setSearchQuery}
                     currentScreen={currentScreen}
                     onNavigate={(screen) => {
-                      const routeMap: Record<NavScreen, string> = { resumen: '/dashboard', stock: '/stock', productos: '/productos', movimientos: '/movimientos', reservas: '/reservas', promociones: '/promociones', proveedores: '/proveedores', configuracion: '/configuracion', login: '/login' };
+                      const routeMap: Record<NavScreen, string> = { resumen: '/dashboard', stock: '/stock', productos: '/productos', movimientos: '/movimientos', reservas: '/reservas', promociones: '/promociones', proveedores: '/proveedores', configuracion: '/configuracion', login: '/login', reportes: '/reportes-ventas' };
                       navigate(routeMap[screen] || '/dashboard');
                     }}
                     onOpenLogin={() => navigate('/login')}

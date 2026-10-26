@@ -1,270 +1,276 @@
-import { supabase } from '../supabase/supabaseClient';
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  User,
-  Lock,
-  Eye,
-  EyeOff,
-  Store,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
-  Sparkles
-} from 'lucide-react';
+import { Store, User, AtSign, Mail, Lock, Eye, EyeOff, ArrowRight, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface LoginViewProps {
-  onLoginSuccess?: (email: string) => void;
-  onBackToApp?: () => void;
+  onLoginSuccess: (email: string) => void;
+  onBackToApp: () => void;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({
-  onLoginSuccess,
-  onBackToApp,
-}) => {
-  // Ahora traemos el error directo desde nuestro AuthContext
-  const { login, isLoading, error: authError } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToApp }) => {
+  const { login, register } = useAuth();
+  const [isRegistering, setIsRegistering] = useState(false);
+  // En el registro: false = dueña/o que crea su boutique, true = se une con un código de invitación
+  const [hasInvite, setHasInvite] = useState(false);
 
-  const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
-
+  const [businessName, setBusinessName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [requestAccessModal, setRequestAccessModal] = useState(false);
-  const [requestSent, setRequestSent] = useState(false);
-  const [accessEmail, setAccessEmail] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError(null);
-
-    if (!email.trim()) {
-      setLocalError('Por favor ingresa tu correo electrónico.');
-      return;
-    }
-    
-    if (!password) {
-      setLocalError('Por favor ingresa tu contraseña.');
-      return;
-    }
+    setError('');
+    setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        if (onLoginSuccess) {
-          onLoginSuccess(email);
-        }
-        navigate(from, { replace: true });
+      let loggedEmail = email;
+      if (isRegistering) {
+        // El rol lo define el servidor: dueña/o = admin, o el rol del código de invitación
+        await register(`${firstName.trim()} ${lastName.trim()}`, email, password, undefined, {
+          businessName: hasInvite ? undefined : businessName.trim(),
+          invitationCode: hasInvite ? inviteCode.trim() : undefined,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          username: username.trim(),
+        });
       } else {
-        // Si Supabase devuelve false, mostramos el error para que no se quede mudo
-        setLocalError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+        loggedEmail = await login(email, password);
       }
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Error al iniciar sesión';
-      setLocalError(errorMsg);
+      onLoginSuccess(loggedEmail);
+      onBackToApp();
+    } catch (err: any) {
+      setError(
+        err?.message ||
+          (isRegistering ? 'No se pudo crear la cuenta.' : 'Correo o contraseña incorrectos.')
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Usamos el error local o el que venga del contexto
-  const displayError = localError || authError;
+  const toggleMode = () => {
+    setIsRegistering(!isRegistering);
+    setHasInvite(false);
+    setError('');
+  };
+
+  const toggleInvite = () => {
+    setHasInvite(!hasInvite);
+    setError('');
+  };
+
+  const inputClass =
+    'block w-full pl-11 pr-4 py-3.5 border border-[#e3e5f0] rounded-full text-sm bg-[#f4f5fb] text-[#1a1740] placeholder:text-[#9a9bb0] focus:bg-white focus:outline-none focus:border-[#6a3fd8] focus:ring-2 focus:ring-[#6a3fd8]/20 transition-colors';
+
+  const iconClass =
+    'absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#7b7c93] pointer-events-none';
 
   return (
-    <div className="relative w-full min-h-screen bg-[#f8f9ff] flex overflow-x-hidden font-body">
-      
-      <div className="flex w-full min-h-screen">
-        <div className="hidden lg:flex w-1/2 relative bg-[#42308f] items-center justify-center overflow-hidden">
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center mix-blend-overlay opacity-30 scale-105"
-            style={{
-              backgroundImage: `url("https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80")`,
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-tr from-[#2a1d63] via-[#42308f] to-[#5a49a8] opacity-95 z-10" />
+    <div className="min-h-screen flex bg-[#f5f6fc]">
+      {/* Panel izquierdo */}
+      <aside className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#5a3aa8] via-[#4a2f96] to-[#3a2682] text-white px-14 py-14">
+        <svg
+          className="absolute inset-0 w-full h-full opacity-[0.10] pointer-events-none"
+          viewBox="0 0 800 1000"
+          preserveAspectRatio="xMidYMid slice"
+          fill="none"
+          stroke="white"
+          strokeWidth="1"
+          aria-hidden="true"
+        >
+          {Array.from({ length: 14 }).map((_, i) => (
+            <path
+              key={i}
+              d={`M-50 ${650 + i * 28} C 150 ${600 + i * 28}, 300 ${760 + i * 28}, 500 ${690 + i * 28} S 750 ${620 + i * 28}, 850 ${700 + i * 28}`}
+            />
+          ))}
+        </svg>
 
-          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5 blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-400/10 blur-3xl" />
-
-          <div className="z-20 p-12 flex flex-col justify-between h-full w-full max-w-xl text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-lg">
-                <Store className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="font-heading font-extrabold text-xl tracking-tight text-white block">
-                  Stocky Boutique
-                </span>
-                <span className="text-[11px] font-medium text-white/70 tracking-wide uppercase">
-                  Aries Indumentaria
-                </span>
-              </div>
-            </div>
-
-            <div className="my-auto space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Gestión de Stock & Roles de Boutique</span>
-              </div>
-
-              <h1 className="font-heading text-4xl xl:text-5xl font-extrabold text-white leading-tight tracking-tight">
-                Control preciso de tu catálogo y stock.
-              </h1>
-
-              <p className="text-white/80 text-sm leading-relaxed max-w-md">
-                Acceso escalonado para Dueña, Desarrollador y Equipo de Ventas. Preparado para autenticación segura en tiempo real con Supabase.
-              </p>
-            </div>
-
-            <div className="text-xs text-white/60 font-medium">
-              Aries Indumentaria © 2026 · Versión con Enrutamiento Escalonado
-            </div>
+        <div className="relative flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center">
+            <Store className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="font-heading text-xl font-bold leading-tight">Stocky Boutique</h1>
+            <p className="text-xs tracking-wide text-white/70 uppercase">Aries Indumentaria</p>
           </div>
         </div>
 
-        <div className="w-full lg:w-1/2 flex flex-col items-center justify-between p-6 sm:p-10 lg:p-12 bg-[#f8f9ff] overflow-y-auto">
-          <div className="w-full max-w-md my-auto flex flex-col gap-6">
-            <div className="text-center lg:text-left">
-              <div className="inline-flex lg:hidden items-center justify-center w-14 h-14 rounded-2xl bg-[#42308f] text-white mb-3 shadow-md">
-                <Store className="w-7 h-7" />
-              </div>
-              <h2 className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0b1c30] tracking-tight">
-                Iniciar Sesión
-              </h2>
-              <p className="text-xs sm:text-sm text-[#5e5d69] mt-1 font-medium">
-                Ingresa con tus credenciales asignadas para acceder a tu panel de boutique.
-              </p>
-            </div>
+        <h2 className="relative font-heading text-5xl xl:text-6xl font-extrabold leading-[1.1] tracking-tight max-w-lg">
+          Control preciso de tu catálogo y stock.
+        </h2>
 
-            {displayError && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-medium flex items-center gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{displayError}</span>
-              </div>
-            )}
+        <div />
+      </aside>
 
-            <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow p-6 sm:p-8 space-y-4 shadow-sm">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="login-email"
-                  className="text-xs font-bold text-[#0b1c30] tracking-wide"
-                >
-                  Correo Electrónico
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-[#797583] group-focus-within:text-[#42308f] transition-colors">
-                    <User className="w-4 h-4" />
+      {/* Formulario */}
+      <main className="flex-1 flex flex-col justify-center items-center px-5 py-12 sm:px-10">
+        <div className="lg:hidden flex items-center gap-3 mb-10">
+          <div className="w-11 h-11 rounded-2xl bg-[#5a3aa8] text-white flex items-center justify-center">
+            <Store className="w-5 h-5" />
+          </div>
+          <span className="font-heading text-lg font-bold text-[#1a1740]">Stocky Boutique</span>
+        </div>
+
+        <div className="w-full max-w-md">
+          <h2 className="font-heading text-4xl font-extrabold text-[#1a1740] tracking-tight mb-6">
+            {isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}
+          </h2>
+
+          <div className="bg-white rounded-[2rem] border border-[#e8e9f4] shadow-xl shadow-[#42308f]/5 p-6 sm:p-8">
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {isRegistering && (
+                <>
+                  {hasInvite ? (
+                    <div className="relative">
+                      <KeyRound className={iconClass} />
+                      <input
+                        type="text"
+                        required
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                        className={`${inputClass} tracking-widest`}
+                        placeholder="Código de invitación"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Store className={iconClass} />
+                      <input
+                        type="text"
+                        required
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        className={inputClass}
+                        placeholder="Nombre de la indumentaria"
+                      />
+                    </div>
+                  )}
+                  <div className="relative">
+                    <User className={iconClass} />
+                    <input
+                      type="text"
+                      required
+                      autoComplete="given-name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className={inputClass}
+                      placeholder={hasInvite ? 'Nombre' : 'Nombre de la propietaria/o'}
+                    />
                   </div>
-                  <input
-                    id="login-email"
-                    name="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="lucerolasala@gmail.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#c9c4d3]/60 bg-[#f8f9ff] focus:bg-white focus:border-[#42308f] focus:ring-2 focus:ring-[#42308f]/20 outline-none transition-all text-xs sm:text-sm text-[#0b1c30] placeholder:text-[#797583]/50 font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label
-                    htmlFor="login-password"
-                    className="text-xs font-bold text-[#0b1c30] tracking-wide"
-                  >
-                    Contraseña
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => alert('Se ha enviado un enlace de recuperación al correo')}
-                    className="text-[11px] font-semibold text-[#42308f] hover:underline cursor-pointer"
-                  >
-                    ¿Olvidaste tu clave?
-                  </button>
-                </div>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-[#797583] group-focus-within:text-[#42308f] transition-colors">
-                    <Lock className="w-4 h-4" />
+                  <div className="relative">
+                    <User className={iconClass} />
+                    <input
+                      type="text"
+                      required
+                      autoComplete="family-name"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className={inputClass}
+                      placeholder={hasInvite ? 'Apellido' : 'Apellido de la propietaria/o'}
+                    />
                   </div>
-                  <input
-                    id="login-password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-2.5 rounded-2xl border border-[#c9c4d3]/60 bg-[#f8f9ff] focus:bg-white focus:border-[#42308f] focus:ring-2 focus:ring-[#42308f]/20 outline-none transition-all text-xs sm:text-sm text-[#0b1c30] placeholder:text-[#797583]/50 font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#797583] hover:text-[#0b1c30] transition-colors cursor-pointer"
-                    aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
+                  <div className="relative">
+                    <AtSign className={iconClass} />
+                    <input
+                      type="text"
+                      required
+                      autoComplete="username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))}
+                      className={inputClass}
+                      placeholder="Usuario"
+                    />
+                  </div>
+                </>
+              )}
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="relative">
+                {isRegistering ? <Mail className={iconClass} /> : <User className={iconClass} />}
                 <input
-                  id="remember-device"
-                  name="remember"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-[#42308f] bg-white border-[#c9c4d3] rounded focus:ring-[#42308f] cursor-pointer accent-[#42308f]"
+                  type={isRegistering ? 'email' : 'text'}
+                  required
+                  autoComplete={isRegistering ? 'email' : 'username'}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputClass}
+                  placeholder={isRegistering ? 'Correo electrónico' : 'Usuario o correo electrónico'}
                 />
-                <label
-                  htmlFor="remember-device"
-                  className="text-xs text-[#5e5d69] font-medium cursor-pointer select-none"
-                >
-                  Recordar mi sesión en este dispositivo
-                </label>
               </div>
+
+              <div className="relative">
+                <Lock className={iconClass} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete={isRegistering ? 'new-password' : 'current-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${inputClass} pr-12`}
+                  placeholder="Contraseña"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7b7c93] hover:text-[#6a3fd8] transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+
+              {error && <p className="text-sm text-rose-600 px-2">{error}</p>}
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full mt-2 py-3 px-6 bg-[#42308f] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#5a49a8] hover:shadow-lg hover:shadow-[#42308f]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full flex justify-center items-center gap-2 py-3.5 rounded-full text-sm font-bold tracking-wide text-white bg-[#6a3fd8] hover:bg-[#5a30c4] shadow-lg shadow-[#6a3fd8]/25 disabled:opacity-70 active:scale-[0.99] transition-all cursor-pointer"
               >
                 {isLoading ? (
-                  <span>Iniciando sesión...</span>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>INGRESAR AL SISTEMA</span>
+                    {isRegistering ? 'CREAR CUENTA' : 'INGRESAR'}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </form>
+          </div>
 
-            <div className="text-center">
+          {isRegistering && (
+            <p className="mt-6 text-center text-sm">
               <button
                 type="button"
-                onClick={() => {
-                  setRequestSent(false);
-                  setRequestAccessModal(true);
-                }}
-                className="text-xs font-bold text-[#42308f] hover:underline cursor-pointer"
+                onClick={toggleInvite}
+                className="font-semibold text-[#6a3fd8] hover:underline cursor-pointer"
               >
-                ¿Aún no tienes cuenta? Solicitar Acceso
+                {hasInvite ? 'Quiero registrar mi propia boutique' : 'Tengo un código de invitación'}
               </button>
-            </div>
+            </p>
+          )}
 
-            <div className="text-center text-[11px] text-[#797583]">
-              Stocky Aries Boutique · Conectividad Supabase Ready · 2026
-            </div>
-          </div>
+          <p className="mt-4 text-center text-sm text-[#5e5f78]">
+            {isRegistering ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}
+            <button
+              type="button"
+              onClick={toggleMode}
+              className="font-semibold text-[#6a3fd8] hover:underline cursor-pointer"
+            >
+              {isRegistering ? 'Iniciá sesión' : 'Registrate'}
+            </button>
+          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

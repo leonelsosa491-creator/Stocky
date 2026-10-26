@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 // @ts-ignore - Ignoramos validación de tipos si supabaseClient es .js puro
-import { supabase } from '../supabase/supabaseClient';
+import { supabase, setRecordarSesion } from '../supabase/supabaseClient';
 import { AppUser, Role } from '../types';
 
 interface RegisterExtra {
@@ -16,7 +16,7 @@ interface AuthContextType {
   role: Role | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (identifier: string, password: string) => Promise<string>;
+  login: (identifier: string, password: string, remember?: boolean) => Promise<string>;
   register: (
     name: string,
     email: string,
@@ -25,7 +25,11 @@ interface AuthContextType {
     extra?: RegisterExtra
   ) => Promise<void>;
   logout: () => Promise<void>;
+  requestPasswordReset: (identifier: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
+
+const CUENTA_DESACTIVADA = 'Tu cuenta fue desactivada. Contactá a la administración de tu boutique.';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -35,14 +39,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // El rol y la boutique se leen de la tabla "perfiles" (no de la metadata del
   // navegador, que cualquiera puede modificar).
-  const cargarUsuario = async (sbUser: any): Promise<AppUser> => {
+  // Devuelve null (y cierra la sesión) si la cuenta fue desactivada desde Gestión de equipo.
+  const cargarUsuario = async (sbUser: any): Promise<AppUser | null> => {
     const email = sbUser.email || '';
+    const columnas = 'rol, username, nombre, apellido, boutique_id, boutiques(nombre)';
 
-    const { data: perfil } = await supabase
+    let { data: perfil, error: perfilError } = await supabase
       .from('perfiles')
-      .select('rol, username, nombre, apellido, boutique_id, boutiques(nombre)')
+      .select(`${columnas}, activo`)
       .eq('id', sbUser.id)
       .maybeSingle();
+    if (perfilError) {
+      // Compatibilidad: la columna "activo" todavía no existe (migración sin correr)
+      ({ data: perfil } = await supabase.from('perfiles').select(columnas).eq('id', sbUser.id).maybeSingle());
+    }
+
+    if (perfil?.activo === false) {
+      await supabase.auth.signOut();
+      return null;
+    }
 
     const boutique = Array.isArray(perfil?.boutiques) ? perfil?.boutiques[0] : perfil?.boutiques;
     const nombreCompleto = [perfil?.nombre, perfil?.apellido].filter(Boolean).join(' ');
@@ -105,7 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Acepta usuario o correo. Devuelve el correo con el que se inició sesión.
-  const login = async (identifier: string, password: string): Promise<string> => {
+  const login = async (identifier: string, password: string, remember = true): Promise<string> => {
+    setRecordarSesion(remember);
     const value = identifier.trim();
     let email = value;
 
@@ -126,7 +142,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
     if (data.user) {
-      setUser(await cargarUsuario(data.user));
+      const u = await cargarUsuario(data.user);
+      if (!u) throw new Error(CUENTA_DESACTIVADA);
+      setUser(u);
     }
     return email;
   };
@@ -177,6 +195,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Envía el correo de recuperación. No revela si la cuenta existe o no.
+  const requestPasswordReset = async (identifier: string) => {
+    const value = identifier.trim();
+    const email = value.includes('@') ? value : await findEmailByUsername(value);
+    if (!email) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/recuperar-clave`,
+    });
+    if (error) throw error;
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  };
+
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -193,6 +227,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
+        requestPasswordReset,
+        updatePassword,
       }}
     >
       {children}

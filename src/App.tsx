@@ -37,6 +37,7 @@ import { Header } from './components/Header';
 import { ResumenView } from './components/ResumenView';
 import { StockDetailView } from './components/StockDetailView';
 import { LoginView } from './components/LoginView';
+import { RecuperarClaveView } from './components/RecuperarClaveView';
 import { ProductosView } from './components/ProductosView';
 import { MovimientosView } from './components/MovimientosView';
 import { ConfiguracionView } from './components/ConfiguracionView';
@@ -786,6 +787,7 @@ export default function App() {
   return (
     <>
       <Routes>
+        <Route path="/recuperar-clave" element={<RecuperarClaveView />} />
         <Route path="/login" element={<LoginView onLoginSuccess={(email) => { showToast(`¡Bienvenida, ${email.split('@')[0]}!`); }} onBackToApp={() => navigate('/dashboard')} />} />
         <Route element={<ProtectedRoute />}>
           <Route

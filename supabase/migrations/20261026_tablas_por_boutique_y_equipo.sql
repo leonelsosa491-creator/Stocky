@@ -7,6 +7,9 @@
 -- ---------------------------------------------------------------------------
 alter table public.perfiles add column if not exists activo boolean not null default true;
 
+-- productos: el SKU es único por boutique (lo usa el upsert onConflict 'boutique_id,sku')
+create unique index if not exists productos_boutique_sku_key on public.productos (boutique_id, sku);
+
 -- ---------------------------------------------------------------------------
 -- 2. Helpers para RLS (security definer: leen perfiles sin depender de sus políticas)
 --    Una cuenta desactivada devuelve null, así que no ve ni modifica nada.

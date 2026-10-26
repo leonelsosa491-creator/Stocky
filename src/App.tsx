@@ -81,7 +81,8 @@ const mapDbToProduct = (row: any): ProductItem => ({
   status: row.status as ProductItem['status'],
 });
 
-const mapProductToDb = (prod: ProductItem) => ({
+const mapProductToDb = (prod: ProductItem, boutiqueId: string) => ({
+  boutique_id: boutiqueId,
   sku: prod.sku,
   name: prod.name,
   description: prod.description || '',
@@ -156,17 +157,11 @@ export default function App() {
         return;
       }
 
-      if (data && data.length > 0) {
-        setProducts(data.map(mapDbToProduct));
-      } else if (data && data.length === 0 && initialData.products.length > 0) {
-        // Si está vacía la tabla, subimos los datos de prueba iniciales
-        const initialPayload = initialData.products.map(mapProductToDb);
-        await supabase.from('productos').upsert(initialPayload, { onConflict: 'sku' });
-      }
+      setProducts((data || []).map(mapDbToProduct));
     };
 
-    fetchProductosFromSupabase();
-  }, []);
+    if (boutiqueId) fetchProductosFromSupabase();
+  }, [boutiqueId]);
 
   // Cargar movimientos, reservas, promociones y proveedores de la boutique (RLS filtra por boutique_id).
   // Si una tabla no se puede leer (migración sin correr), se conserva la copia local.
@@ -193,21 +188,24 @@ export default function App() {
 
   // Funciones auxiliares de sincronización con Supabase
   const syncProductToSupabase = async (prod: ProductItem) => {
+    if (!boutiqueId) return;
     const { error } = await supabase
       .from('productos')
-      .upsert(mapProductToDb(prod), { onConflict: 'sku' });
+      .upsert(mapProductToDb(prod, boutiqueId), { onConflict: 'boutique_id,sku' });
     if (error) console.error('Error guardando en Supabase:', error.message);
   };
 
   const syncBatchProductsToSupabase = async (batch: ProductItem[]) => {
+    if (!boutiqueId || batch.length === 0) return;
     const { error } = await supabase
       .from('productos')
-      .upsert(batch.map(mapProductToDb), { onConflict: 'sku' });
+      .upsert(batch.map((p) => mapProductToDb(p, boutiqueId)), { onConflict: 'boutique_id,sku' });
     if (error) console.error('Error guardando lote en Supabase:', error.message);
   };
 
   const deleteProductFromSupabase = async (sku: string) => {
-    const { error } = await supabase.from('productos').delete().eq('sku', sku);
+    if (!boutiqueId) return;
+    const { error } = await supabase.from('productos').delete().eq('boutique_id', boutiqueId).eq('sku', sku);
     if (error) console.error('Error eliminando en Supabase:', error.message);
   };
 

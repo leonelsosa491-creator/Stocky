@@ -26,7 +26,7 @@ import {
   Printer
 } from 'lucide-react';
 import { CategorySummary, ProductItem, StockMovement, ReservaItem } from '../types';
-import { Can } from './auth/Can';
+import { Can, ROLES_GESTION } from './auth/Can';
 import { ReporteImprimible } from './ReporteImprimible';
 
 interface ResumenViewProps {
@@ -1049,13 +1049,15 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               )}
             </div>
             {onOpenCrearStock && (
-              <button
-                onClick={onOpenCrearStock}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] rounded-full text-xs font-bold transition-all shadow-2xs cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                + Nuevo Stock
-              </button>
+              <Can role={ROLES_GESTION}>
+                <button
+                  onClick={onOpenCrearStock}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] rounded-full text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  + Nuevo Stock
+                </button>
+              </Can>
             )}
             <button className="p-2 text-[#797583] hover:text-[#42308f] hover:bg-[#eff4ff] rounded-full transition-colors cursor-pointer" title="Filtros">
               <Filter className="w-4 h-4" />

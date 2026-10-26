@@ -10,7 +10,7 @@ const ROL_LABEL: Record<Invitacion['rol'], string> = {
   vendedora: 'Empleada/o',
 };
 
-// Panel para generar códigos de invitación. Pegalo en la pantalla de Configuración.
+// Panel para generar códigos de invitación (se muestra en Configuración).
 // Solo se muestra a dueñas/os, encargadas/os y developer.
 export const InvitacionesPanel: React.FC = () => {
   const { role } = useAuth();
@@ -74,11 +74,18 @@ export const InvitacionesPanel: React.FC = () => {
   };
 
   return (
-    <section className="bg-white rounded-2xl border border-[#e8e9f4] p-6">
-      <h3 className="font-heading text-lg font-bold text-[#1a1740]">Invitar al equipo</h3>
-      <p className="mt-1 text-sm text-[#5e5f78]">
-        Generá un código y pasáselo a la persona. Lo usa una sola vez al registrarse y vence en 7 días.
-      </p>
+    <section className="bg-white rounded-3xl p-6 sm:p-8 border border-[#c9c4d3]/40 card-shadow">
+      <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
+        <div className="w-9 h-9 rounded-full bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
+          <UserPlus className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="font-heading font-bold text-base text-[#0b1c30]">Invitar al equipo</h3>
+          <p className="text-xs text-[#797583]">
+            Generá un código y pasáselo a la persona. Lo usa una sola vez al registrarse y vence en 7 días.
+          </p>
+        </div>
+      </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
         <button

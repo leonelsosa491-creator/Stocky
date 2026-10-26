@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Store, User, AtSign, Mail, Lock, Eye, EyeOff, ArrowRight, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+// @ts-ignore - supabaseClient es .js puro
+import { getRecordarSesion } from '../supabase/supabaseClient';
 
 interface LoginViewProps {
   onLoginSuccess: (email: string) => void;
@@ -8,7 +10,7 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToApp }) => {
-  const { login, register } = useAuth();
+  const { login, register, requestPasswordReset } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
   // En el registro: false = dueña/o que crea su boutique, true = se une con un código de invitación
   const [hasInvite, setHasInvite] = useState(false);
@@ -23,11 +25,27 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [recordar, setRecordar] = useState<boolean>(() => getRecordarSesion());
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotice('');
     setIsLoading(true);
+
+    if (isRecovering) {
+      try {
+        await requestPasswordReset(email);
+        setNotice('Si la cuenta existe, te enviamos un correo con un enlace para crear una nueva contraseña.');
+      } catch (err: any) {
+        setError(err?.message || 'No se pudo enviar el correo de recuperación.');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     try {
       let loggedEmail = email;
@@ -41,7 +59,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
           username: username.trim(),
         });
       } else {
-        loggedEmail = await login(email, password);
+        loggedEmail = await login(email, password, recordar);
       }
       onLoginSuccess(loggedEmail);
       onBackToApp();
@@ -57,8 +75,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
 
   const toggleMode = () => {
     setIsRegistering(!isRegistering);
+    setIsRecovering(false);
     setHasInvite(false);
     setError('');
+    setNotice('');
+  };
+
+  const toggleRecovering = () => {
+    setIsRecovering(!isRecovering);
+    setError('');
+    setNotice('');
   };
 
   const toggleInvite = () => {
@@ -121,7 +147,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
 
         <div className="w-full max-w-md">
           <h2 className="font-heading text-4xl font-extrabold text-[#1a1740] tracking-tight mb-6">
-            {isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}
+            {isRegistering ? 'Crear cuenta' : isRecovering ? 'Recuperar contraseña' : 'Iniciar sesión'}
           </h2>
 
           <div className="bg-white rounded-[2rem] border border-[#e8e9f4] shadow-xl shadow-[#42308f]/5 p-6 sm:p-8">
@@ -207,6 +233,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
                 />
               </div>
 
+              {isRecovering && (
+                <p className="text-sm text-[#5e5f78] px-2">
+                  Ingresá tu usuario o correo y te enviaremos un enlace para crear una nueva contraseña.
+                </p>
+              )}
+
+              {!isRecovering && (
               <div className="relative">
                 <Lock className={iconClass} />
                 <input
@@ -227,8 +260,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              )}
+
+              {!isRegistering && !isRecovering && (
+                <div className="flex items-center justify-between px-2 text-sm">
+                  <label className="flex items-center gap-2 text-[#5e5f78] cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={recordar}
+                      onChange={(e) => setRecordar(e.target.checked)}
+                      className="h-4 w-4 rounded border-[#e3e5f0] accent-[#6a3fd8] cursor-pointer"
+                    />
+                    Recordar mi sesión
+                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleRecovering}
+                    className="font-semibold text-[#6a3fd8] hover:underline cursor-pointer"
+                  >
+                    ¿Olvidaste tu clave?
+                  </button>
+                </div>
+              )}
 
               {error && <p className="text-sm text-rose-600 px-2">{error}</p>}
+              {notice && <p className="text-sm text-emerald-600 px-2">{notice}</p>}
 
               <button
                 type="submit"
@@ -239,7 +295,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    {isRegistering ? 'CREAR CUENTA' : 'INGRESAR'}
+                    {isRegistering ? 'CREAR CUENTA' : isRecovering ? 'ENVIAR ENLACE' : 'INGRESAR'}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -255,6 +311,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
                 className="font-semibold text-[#6a3fd8] hover:underline cursor-pointer"
               >
                 {hasInvite ? 'Quiero registrar mi propia boutique' : 'Tengo un código de invitación'}
+              </button>
+            </p>
+          )}
+
+          {isRecovering && (
+            <p className="mt-6 text-center text-sm">
+              <button
+                type="button"
+                onClick={toggleRecovering}
+                className="font-semibold text-[#6a3fd8] hover:underline cursor-pointer"
+              >
+                Volver a iniciar sesión
               </button>
             </p>
           )}

@@ -14,6 +14,8 @@ import {
 import { AppUser, UserRole } from '../types';
 import { loadStoreSettings, saveStoreSettings } from '../utils/storage';
 import { Can } from './auth/Can';
+import { InvitacionesPanel } from './InvitacionesPanel';
+import { EquipoPanel } from './EquipoPanel';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase/supabaseClient';
 
@@ -358,7 +360,13 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
         </div>
       </form>
 
-      {/* SECCIÓN 4: ZONA DE PRUEBAS */}
+      {/* SECCIÓN 4: INVITACIONES AL EQUIPO */}
+      <Can role={['admin', 'developer']}>
+        <InvitacionesPanel />
+        <EquipoPanel />
+      </Can>
+
+      {/* SECCIÓN 5: ZONA DE PRUEBAS */}
       <Can
         role="developer"
         fallback={

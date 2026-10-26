@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Promotion, DiscountType, PromotionStatus, ProductItem } from '../types';
+import { generarSufijoId } from '../supabase/tablas';
 
 interface PromocionModalProps {
   isOpen: boolean;
@@ -210,7 +211,7 @@ export const PromocionModal: React.FC<PromocionModalProps> = ({
     }
 
     const savedPromo: Promotion = {
-      id: promotionToEdit ? promotionToEdit.id : `PROMO-${Date.now().toString().slice(-4)}`,
+      id: promotionToEdit ? promotionToEdit.id : `PROMO-${generarSufijoId()}`,
       title: title.trim(),
       discountType,
       discountValue: discountType === 'dos_por_uno' ? 50 : Number(discountValue),

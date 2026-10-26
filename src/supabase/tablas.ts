@@ -208,3 +208,10 @@ export const vaciarTablasBoutique = async (boutiqueId: string) => {
     })
   );
 };
+
+// Ventas y reservas: descuento atómico vía RPC (la vendedora no puede escribir productos directamente)
+export const descontarStock = async (items: { sku: string; cantidad: number }[]) => {
+  if (items.length === 0) return;
+  const { error } = await supabase.rpc('descontar_stock', { p_items: items });
+  logError('descontar stock', error);
+};

@@ -265,3 +265,49 @@ revoke all on function public.listar_equipo() from public, anon;
 revoke all on function public.actualizar_miembro(uuid, text, boolean) from public, anon;
 grant execute on function public.listar_equipo() to authenticated;
 grant execute on function public.actualizar_miembro(uuid, text, boolean) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 6. Descuento de stock por ventas y reservas (cualquier rol activo de la boutique).
+--    La vendedora no tiene permiso de escritura directa sobre productos: solo puede
+--    descontar unidades a través de esta función. Es atómica (sin pisar ventas simultáneas).
+--    p_items: [{"sku": "ABC-1", "cantidad": 2}, ...]
+-- ---------------------------------------------------------------------------
+create or replace function public.descontar_stock(p_items jsonb)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_boutique uuid := public.auth_boutique_id();
+  v_item jsonb;
+  v_sku text;
+  v_cantidad integer;
+  v_stock integer;
+  v_minimo integer;
+  v_status text;
+begin
+  if v_boutique is null then
+    raise exception 'Cuenta sin boutique o desactivada.';
+  end if;
+
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_sku := v_item->>'sku';
+    v_cantidad := coalesce((v_item->>'cantidad')::integer, 0);
+    if v_sku is null or v_cantidad <= 0 then
+      continue;
+    end if;
+
+    update public.productos
+      set stock = greatest(0, stock - v_cantidad)
+      where boutique_id = v_boutique and sku = v_sku
+      returning stock, coalesce(min_stock_threshold, 10) into v_stock, v_minimo;
+
+    if found then
+      v_status := case when v_stock = 0 then 'agotado' when v_stock <= v_minimo then 'bajo' else 'ok' end;
+      -- format/%L: funciona tanto si status es text como si es un enum
+      execute format('update public.productos set status = %L where boutique_id = %L and sku = %L', v_status, v_boutique, v_sku);
+    end if;
+  end loop;
+end;
+$$;
+
+revoke all on function public.descontar_stock(jsonb) from public, anon;
+grant execute on function public.descontar_stock(jsonb) to authenticated;

@@ -30,7 +30,7 @@ import { supabase } from './supabase/supabaseClient';
 import {
   fetchMovimientos, fetchReservas, fetchPromociones, fetchProveedores,
   upsertMovimientos, upsertReservas, upsertPromociones, upsertProveedores,
-  deleteReservas, deletePromociones, deleteProveedores, vaciarTablasBoutique, generarSufijoId,
+  deleteReservas, deletePromociones, deleteProveedores, vaciarTablasBoutique, generarSufijoId, descontarStock,
 } from './supabase/tablas';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -599,7 +599,6 @@ export default function App() {
     const soldSkuMap = new Map<string, number>();
     saleData.items.forEach((item: any) => { soldSkuMap.set(item.sku, (soldSkuMap.get(item.sku) || 0) + item.quantity); });
     
-    const modifiedProducts: ProductItem[] = [];
     const updatedProducts = products.map((prod) => {
       const soldQty = soldSkuMap.get(prod.sku);
       if (soldQty) {
@@ -608,15 +607,12 @@ export default function App() {
         if (newStock === 0) status = 'agotado';
         else if (newStock <= prod.minStockThreshold) status = 'bajo';
         const updated = { ...prod, stock: newStock, status };
-        modifiedProducts.push(updated);
         return updated;
       }
       return prod;
     });
     setProducts(updatedProducts);
-    if (modifiedProducts.length > 0) {
-      syncBatchProductsToSupabase(modifiedProducts);
-    }
+    descontarStock(Array.from(soldSkuMap, ([sku, cantidad]) => ({ sku, cantidad })));
 
     const dateInfo = getMovementDateInfo();
     const newMovements: StockMovement[] = saleData.items.map((item: any, idx: number) => ({
@@ -642,11 +638,11 @@ export default function App() {
       if (p.sku === reservaData.garmentSku) {
         const nextStock = Math.max(0, p.stock - reservaData.quantity);
         const updated: ProductItem = { ...p, stock: nextStock, status: nextStock === 0 ? 'agotado' : nextStock <= p.minStockThreshold ? 'bajo' : 'ok' };
-        syncProductToSupabase(updated);
         return updated;
       }
       return p;
     }));
+    descontarStock([{ sku: reservaData.garmentSku, cantidad: reservaData.quantity }]);
     const dateInfo = getMovementDateInfo();
     const newMov: StockMovement = {
       id: `MOV-RES-${generarSufijoId()}`,

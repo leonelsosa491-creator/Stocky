@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { ProductItem, Promotion, CategorySummary } from '../types';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { Can, ROLES_GESTION, useCan } from './auth/Can';
 import {
   MAIN_COLOR_FAMILIES,
   matchesColorFamily,
@@ -73,6 +74,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
   onExport,
   onUpdateProductStock,
 }) => {
+  const puedeGestionar = useCan(ROLES_GESTION);
   const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'bajo' | 'agotado' | 'ok'>(
@@ -333,6 +335,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               </button>
             )}
 
+            <Can role={ROLES_GESTION}>
             <button
               onClick={() => {
                 onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'reponer');
@@ -358,6 +361,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               </svg>
               + Prenda Nueva
             </button>
+            </Can>
           </div>
         </div>
       </div>
@@ -429,6 +433,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             >
               Ver todos los artículos
             </button>
+            <Can role={ROLES_GESTION}>
             <button
               onClick={() => onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined)}
               className="px-4 py-2 rounded-full bg-[#42308f] hover:bg-[#5a49a8] text-xs font-bold text-white shadow-xs transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 cursor-pointer"
@@ -436,6 +441,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               <Plus className="w-3.5 h-3.5" />
               Reponer Stock
             </button>
+            </Can>
           </div>
         </div>
       )}
@@ -481,6 +487,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             );
           })}
 
+          <Can role={ROLES_GESTION}>
           <button
             onClick={onOpenCrearStock}
             className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] border border-dashed border-[#42308f]/40 transition-colors cursor-pointer"
@@ -488,6 +495,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             <Plus className="w-3.5 h-3.5" />
             <span>Nuevo</span>
           </button>
+          </Can>
         </div>
       </div>
 
@@ -771,6 +779,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                   Restablecer Filtros
                 </button>
               )}
+              <Can role={ROLES_GESTION}>
               <button
                 onClick={() => onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined)}
                 className="px-5 py-2 rounded-full bg-[#42308f] text-white text-xs font-bold hover:bg-[#5a49a8] flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
@@ -778,6 +787,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                 <Plus className="w-4 h-4" />
                 Cargar Prenda Ahora
               </button>
+              </Can>
             </div>
           </div>
         ) : viewMode === 'list' ? (
@@ -802,7 +812,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                     <tr
                       key={prod.sku}
                       className="hover:bg-[#f8f9ff] transition-colors group cursor-pointer"
-                      onClick={() => onEditStock(prod)}
+                      onClick={() => { if (puedeGestionar) onEditStock(prod); }}
                     >
                       <td className="px-6 py-4 font-mono text-xs font-bold text-[#42308f]">
                         {prod.sku}
@@ -903,6 +913,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Can role={ROLES_GESTION}>
                           {/* 1. Botón Reponer */}
                           <button
                             id={`btn-reponer-row-${prod.sku}`}
@@ -921,6 +932,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                               Reponer stock rápido
                             </span>
                           </button>
+                          </Can>
 
                           {/* 2. Botón Vender */}
                           {onOpenRegistrarVenta && (
@@ -966,6 +978,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                             </button>
                           )}
 
+                          <Can role={ROLES_GESTION}>
                           {/* 4. Botón Editar */}
                           <button
                             onClick={(e) => {
@@ -996,6 +1009,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                               </span>
                             </button>
                           )}
+                          </Can>
                         </div>
                       </td>
                     </tr>
@@ -1011,7 +1025,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               return (
                 <div
                   key={prod.sku}
-                  onClick={() => onEditStock(prod)}
+                  onClick={() => { if (puedeGestionar) onEditStock(prod); }}
                   className="bg-[#f8f9ff] hover:bg-white rounded-2xl p-4 border border-[#c9c4d3]/40 hover:border-[#42308f]/40 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
                 >
                   <div>
@@ -1034,6 +1048,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                           style={{ backgroundColor: prod.colorHex }}
                           title={getProductColorDisplay(prod).tooltipText}
                         />
+                        <Can role={ROLES_GESTION}>
                         {onDeleteProduct && (
                           <button
                             id={`btn-eliminar-grid-${prod.sku}`}
@@ -1047,6 +1062,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
+                        </Can>
                       </div>
                     </div>
 
@@ -1085,6 +1101,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <Can role={ROLES_GESTION}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1100,6 +1117,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                         <Plus className="w-3.5 h-3.5" />
                         <span>Reponer</span>
                       </button>
+                      </Can>
                       {onOpenRegistrarVenta && (
                         <button
                           id={`btn-vender-grid-${prod.sku}`}

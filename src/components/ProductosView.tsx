@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Boxes, Plus, Search, Tag, ArrowRight, ShoppingBag, Package, Trash2 } from 'lucide-react';
 import { ProductItem } from '../types';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { Can, ROLES_GESTION, useCan } from './auth/Can';
 
 interface ProductosViewProps {
   products: ProductItem[];
@@ -20,6 +21,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
 }) => {
   const [selectedCat, setSelectedCat] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const puedeGestionar = useCan(ROLES_GESTION);
   const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
 
   const filtered = products.filter((p) => {
@@ -60,6 +62,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             </button>
           )}
 
+          <Can role={ROLES_GESTION}>
           {/* NUEVO BOTÓN: Reponer Existente */}
           <button
             onClick={() => {
@@ -89,7 +92,9 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             </svg>
             Prenda Nueva
           </button>
+          </Can>
         </div>
+          <Can role={ROLES_GESTION}>
           <button
             onClick={onOpenNuevoIngreso}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"
@@ -97,6 +102,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             <Plus className="w-4 h-4" />
             Añadir Producto
           </button>
+          </Can>
         </div>
       </div>
 
@@ -142,8 +148,11 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
           <p className="text-xs text-[#5e5d69] max-w-sm mt-1.5 mb-5">
             {search || selectedCat !== 'all'
               ? 'No se encontraron prendas con los filtros aplicados.'
-              : 'El inventario está vacío. Podés registrar nuevos artículos con el botón "Nuevo Ingreso".'}
+              : puedeGestionar
+                ? 'El inventario está vacío. Podés registrar nuevos artículos con el botón "Nuevo Ingreso".'
+                : 'El inventario está vacío. Pedile a la encargada que cargue las prendas.'}
           </p>
+          <Can role={ROLES_GESTION}>
           <button
             id="btn-catalogo-cargar-primera"
             onClick={onOpenNuevoIngreso}
@@ -152,13 +161,14 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
             <Plus className="w-4 h-4" />
             Cargar Primera Prenda
           </button>
+          </Can>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map((item) => (
             <div
               key={item.sku}
-              onClick={() => onSelectProduct(item)}
+              onClick={() => { if (puedeGestionar) onSelectProduct(item); }}
               className="bg-white rounded-3xl p-5 border border-[#c9c4d3]/40 card-shadow hover:border-[#42308f]/40 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between"
             >
               <div>
@@ -168,6 +178,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
                     <span className="px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#42308f] font-bold text-[10px]">
                       {item.category}
                     </span>
+                    <Can role={ROLES_GESTION}>
                     {onDeleteProduct && (
                       <button
                         id={`btn-eliminar-producto-${item.sku}`}
@@ -181,6 +192,7 @@ export const ProductosView: React.FC<ProductosViewProps> = ({
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
+                    </Can>
                   </div>
                 </div>
 

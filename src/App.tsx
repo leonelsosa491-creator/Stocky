@@ -27,6 +27,11 @@ import {
 } from './utils/storage';
 // @ts-ignore
 import { supabase } from './supabase/supabaseClient';
+import {
+  fetchMovimientos, fetchReservas, fetchPromociones, fetchProveedores,
+  upsertMovimientos, upsertReservas, upsertPromociones, upsertProveedores,
+  deleteReservas, deletePromociones, deleteProveedores, vaciarTablasBoutique, generarSufijoId,
+} from './supabase/tablas';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { ResumenView } from './components/ResumenView';
@@ -99,6 +104,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const boutiqueId = user?.boutiqueId;
 
   const currentScreen = useMemo<NavScreen>(() => {
     const path = location.pathname;
@@ -160,6 +166,29 @@ export default function App() {
 
     fetchProductosFromSupabase();
   }, []);
+
+  // Cargar movimientos, reservas, promociones y proveedores de la boutique (RLS filtra por boutique_id).
+  // Si una tabla no se puede leer (migración sin correr), se conserva la copia local.
+  useEffect(() => {
+    if (!boutiqueId) return;
+    let cancelado = false;
+    (async () => {
+      const [movs, res, promos, provs] = await Promise.all([
+        fetchMovimientos(), fetchReservas(), fetchPromociones(), fetchProveedores(),
+      ]);
+      if (cancelado) return;
+      if (movs) setMovements(movs);
+      if (res) setReservas(res);
+      if (promos) setPromotions(promos);
+      if (provs) setSuppliers(provs);
+    })();
+    return () => { cancelado = true; };
+  }, [boutiqueId]);
+
+  const registrarMovimientos = (nuevos: StockMovement[]) => {
+    setMovements((prev) => [...nuevos, ...prev]);
+    if (boutiqueId) upsertMovimientos(boutiqueId, nuevos);
+  };
 
   // Funciones auxiliares de sincronización con Supabase
   const syncProductToSupabase = async (prod: ProductItem) => {
@@ -332,7 +361,7 @@ export default function App() {
 
     const dateInfo = getMovementDateInfo();
     const newMovement: StockMovement = {
-      id: `MOV-${Date.now().toString().slice(-4)}`,
+      id: `MOV-${generarSufijoId()}`,
       date: dateInfo.date,
       rawDate: dateInfo.rawDate,
       sku: data.sku,
@@ -343,7 +372,7 @@ export default function App() {
       sourceOrDestination: data.supplier,
       notes: data.notes || 'Ingreso de mercadería',
     };
-    setMovements([newMovement, ...movements]);
+    registrarMovimientos([newMovement]);
     showToast(`+${data.quantity} unidades ingresadas a ${data.productName}`);
   };
 
@@ -356,7 +385,7 @@ export default function App() {
       const diff = updated.stock - original.stock;
       const dateInfo = getMovementDateInfo();
       const newMovement: StockMovement = {
-        id: `MOV-${Date.now().toString().slice(-4)}`,
+        id: `MOV-${generarSufijoId()}`,
         date: dateInfo.date,
         rawDate: dateInfo.rawDate,
         sku: updated.sku,
@@ -367,7 +396,7 @@ export default function App() {
         sourceOrDestination: updated.locationFacility,
         notes: 'Ajuste manual de stock',
       };
-      setMovements((m) => [newMovement, ...m]);
+      registrarMovimientos([newMovement]);
     }
     showToast(`Stock actualizado para ${updated.sku}`);
   };
@@ -407,6 +436,7 @@ export default function App() {
 
   const handleSavePromotion = (promo: Promotion) => {
     const exists = promotions.some((p) => p.id === promo.id);
+    if (boutiqueId) upsertPromociones(boutiqueId, [promo]);
     if (exists) {
       setPromotions((prev) => prev.map((p) => (p.id === promo.id ? promo : p)));
       showToast(`Promoción "${promo.title}" modificada con éxito`);
@@ -419,22 +449,21 @@ export default function App() {
   const handleDeletePromotionConfirm = () => {
     if (!deletingPromotion) return;
     const title = deletingPromotion.title;
-    setPromotions((prev) => prev.filter((p) => p.id !== deletingPromotion.id));
+    const promoId = deletingPromotion.id;
+    setPromotions((prev) => prev.filter((p) => p.id !== promoId));
+    if (boutiqueId) deletePromociones(boutiqueId, [promoId]);
     showToast(`Promoción "${title}" eliminada del sistema`);
     setDeletingPromotion(null);
   };
 
   const handleTogglePromotionStatus = (promoId: string) => {
-    setPromotions((prev) =>
-      prev.map((p) => {
-        if (p.id === promoId) {
-          const newStatus = p.status === 'activa' ? 'pausada' : 'activa';
-          showToast(`Promoción "${p.title}" ahora está ${newStatus}`);
-          return { ...p, status: newStatus };
-        }
-        return p;
-      })
-    );
+    const target = promotions.find((p) => p.id === promoId);
+    if (!target) return;
+    const newStatus: Promotion['status'] = target.status === 'activa' ? 'pausada' : 'activa';
+    const updated: Promotion = { ...target, status: newStatus };
+    setPromotions((prev) => prev.map((p) => (p.id === promoId ? updated : p)));
+    if (boutiqueId) upsertPromociones(boutiqueId, [updated]);
+    showToast(`Promoción "${target.title}" ahora está ${newStatus}`);
   };
 
   const handleOpenCrearStock = () => setIsCrearStockOpen(true);
@@ -447,7 +476,7 @@ export default function App() {
 
       const dateInfo = getMovementDateInfo();
       const newMovement: StockMovement = {
-        id: `MOV-${Date.now().toString().slice(-4)}`,
+        id: `MOV-${generarSufijoId()}`,
         date: dateInfo.date,
         rawDate: dateInfo.rawDate,
         sku: initialProduct.sku,
@@ -458,7 +487,7 @@ export default function App() {
         sourceOrDestination: initialProduct.locationFacility,
         notes: `Carga inicial de stock para ${newCat.name}`,
       };
-      setMovements((prev) => [newMovement, ...prev]);
+      registrarMovimientos([newMovement]);
     }
     setSelectedCategory(newCat.name);
     navigate('/stock');
@@ -495,7 +524,7 @@ export default function App() {
     );
     const dateInfo = getMovementDateInfo();
     const newMovement: StockMovement = {
-      id: `MOV-${Date.now().toString().slice(-4)}`,
+      id: `MOV-${generarSufijoId()}`,
       date: dateInfo.date,
       rawDate: dateInfo.rawDate,
       sku: data.sku,
@@ -506,7 +535,7 @@ export default function App() {
       sourceOrDestination: data.locationFacility || 'Depósito Central',
       notes: `${data.notes || 'Reposición'} (${data.supplier || 'Taller Principal'})`,
     };
-    setMovements((prev) => [newMovement, ...prev]);
+    registrarMovimientos([newMovement]);
     showToast(`+${data.quantity} unidades ingresadas a ${data.productName} (${data.sku})`);
   };
 
@@ -518,7 +547,7 @@ export default function App() {
     const firstCat = batch[0].category;
     const dateInfo = getMovementDateInfo();
     const newMovement: StockMovement = {
-      id: `MOV-${Date.now().toString().slice(-4)}`,
+      id: `MOV-${generarSufijoId()}`,
       date: dateInfo.date,
       rawDate: dateInfo.rawDate,
       sku: batch.map((b) => b.sku).join(', '),
@@ -529,7 +558,7 @@ export default function App() {
       sourceOrDestination: batch[0].locationFacility,
       notes: `Carga de curva de talles para ${firstCat}`,
     };
-    setMovements((prev) => [newMovement, ...prev]);
+    registrarMovimientos([newMovement]);
     showToast(`${batch.length} variantes (${totalQty} unidades) cargadas al stock`);
   };
 
@@ -551,7 +580,7 @@ export default function App() {
       setProducts((prev) => [prod, ...prev]);
       const dateInfo = getMovementDateInfo();
       const newMovement: StockMovement = {
-        id: `MOV-${Date.now().toString().slice(-4)}`,
+        id: `MOV-${generarSufijoId()}`,
         date: dateInfo.date,
         rawDate: dateInfo.rawDate,
         sku: prod.sku,
@@ -562,7 +591,7 @@ export default function App() {
         sourceOrDestination: prod.locationFacility,
         notes: `Carga directa a stock de ${prod.category}`,
       };
-      setMovements((prev) => [newMovement, ...prev]);
+      registrarMovimientos([newMovement]);
       showToast(`Prenda "${prod.name}" cargada al stock de ${prod.category}`);
     }
   };
@@ -592,7 +621,7 @@ export default function App() {
 
     const dateInfo = getMovementDateInfo();
     const newMovements: StockMovement[] = saleData.items.map((item: any, idx: number) => ({
-      id: `MOV-VTA-${Date.now().toString().slice(-4)}-${idx}`,
+      id: `MOV-VTA-${generarSufijoId()}-${idx}`,
       date: dateInfo.date,
       rawDate: dateInfo.rawDate,
       sku: item.sku,
@@ -603,12 +632,12 @@ export default function App() {
       sourceOrDestination: `${saleData.channel} #${saleData.ticketNumber}`,
       notes: `${saleData.paymentDetails || `Venta con ${saleData.paymentMethod}`} • Cliente: ${saleData.customerName}${saleData.customerPhone ? ` (Tel/WA: ${saleData.customerPhone})` : ''}${saleData.saleNotes ? ` • Nota: ${saleData.saleNotes}` : ''} ($${item.subtotal.toLocaleString('es-AR')})`,
     }));
-    setMovements((prev) => [...newMovements, ...prev]);
+    registrarMovimientos(newMovements);
     showToast(`¡Venta registrada! -${saleData.totalUnits} prendas descontadas del stock`);
   };
 
   const handleCreateReserva = (reservaData: any) => {
-    const nextNum = reservas.length + 104;
+    const nextNum = Math.max(103, ...reservas.map((r) => parseInt(r.id.replace(/\D/g, ''), 10) || 0)) + 1;
     const newRes: ReservaItem = { ...reservaData, id: `RES-${nextNum}`, code: `#RES-${nextNum}`, status: 'activa', createdAt: new Date().toISOString().slice(0, 10) };
     setProducts((prev) => prev.map((p) => {
       if (p.sku === reservaData.garmentSku) {
@@ -621,7 +650,7 @@ export default function App() {
     }));
     const dateInfo = getMovementDateInfo();
     const newMov: StockMovement = {
-      id: `MOV-RES-${Date.now().toString().slice(-4)}`,
+      id: `MOV-RES-${generarSufijoId()}`,
       date: dateInfo.date,
       rawDate: dateInfo.rawDate,
       sku: reservaData.garmentSku,
@@ -632,8 +661,9 @@ export default function App() {
       sourceOrDestination: `Reserva ${newRes.code} (Seña: $${reservaData.depositAmount.toLocaleString('es-AR')})`,
       notes: `Prenda apartada para ${reservaData.customerName} (Seña pagada con ${reservaData.depositPaymentMethod}). Resta saldo: $${reservaData.pendingBalance.toLocaleString('es-AR')}`,
     };
-    setMovements((prev) => [newMov, ...prev]);
+    registrarMovimientos([newMov]);
     setReservas((prev) => [newRes, ...prev]);
+    if (boutiqueId) upsertReservas(boutiqueId, [newRes]);
     showToast(`¡Reserva ${newRes.code} creada! Seña de $${reservaData.depositAmount.toLocaleString('es-AR')} registrada.`);
   };
 
@@ -641,7 +671,9 @@ export default function App() {
     const target = reservas.find((r) => r.id === reservaId);
     if (!target) return;
     const nowStr = new Date().toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    setReservas((prev) => prev.map((r) => r.id === reservaId ? { ...r, status: 'retirada' as const, pendingBalance: 0, pickedUpAt: nowStr, balancePaymentMethod: balancePaymentMethod as any } : r));
+    const retirada: ReservaItem = { ...target, status: 'retirada', pendingBalance: 0, pickedUpAt: nowStr, balancePaymentMethod: balancePaymentMethod as any };
+    setReservas((prev) => prev.map((r) => (r.id === reservaId ? retirada : r)));
+    if (boutiqueId) upsertReservas(boutiqueId, [retirada]);
     showToast(`¡Prenda retirada! Saldo de $${target.pendingBalance.toLocaleString('es-AR')} cobrado (${balancePaymentMethod}).`);
   };
 
@@ -663,6 +695,7 @@ export default function App() {
       showToast(`Reserva ${target.code} eliminada del registro.`);
     }
     setReservas((prev) => prev.filter((r) => r.id !== reservaId));
+    if (boutiqueId) deleteReservas(boutiqueId, [reservaId]);
   };
 
   const handleClearCaducadas = () => {
@@ -679,23 +712,28 @@ export default function App() {
       return p;
     }));
     setReservas((prev) => prev.filter((r) => r.status !== 'caducada'));
+    if (boutiqueId) deleteReservas(boutiqueId, caducadas.map((c) => c.id));
     showToast(`${caducadas.length} reservas caducadas eliminadas y prendas devueltas al perchero.`);
   };
 
   const handleAddSupplier = (supplierData: Omit<Supplier, 'id'>) => {
-    const nextId = `SUP-0${suppliers.length + 1}`;
-    setSuppliers((prev) => [...prev, { ...supplierData, id: nextId }]);
+    const nextNum = Math.max(0, ...suppliers.map((s) => parseInt(s.id.replace(/\D/g, ''), 10) || 0)) + 1;
+    const nuevo: Supplier = { ...supplierData, id: `SUP-${String(nextNum).padStart(2, '0')}` };
+    setSuppliers((prev) => [...prev, nuevo]);
+    if (boutiqueId) upsertProveedores(boutiqueId, [nuevo]);
     showToast(`¡Proveedor "${supplierData.name}" agregado con éxito!`);
   };
 
   const handleEditSupplier = (supplier: Supplier) => {
     setSuppliers((prev) => prev.map((s) => (s.id === supplier.id ? supplier : s)));
+    if (boutiqueId) upsertProveedores(boutiqueId, [supplier]);
     showToast(`¡Proveedor "${supplier.name}" actualizado!`);
   };
 
   const handleDeleteSupplier = (supplierId: string) => {
     const found = suppliers.find((s) => s.id === supplierId);
     setSuppliers((prev) => prev.filter((s) => s.id !== supplierId));
+    if (boutiqueId) deleteProveedores(boutiqueId, [supplierId]);
     showToast(`Proveedor "${found?.name || supplierId}" eliminado.`);
   };
 
@@ -733,7 +771,7 @@ export default function App() {
     clearAllStoredData();
     setProducts([]); setMovements([]); setReservas([]); setPromotions([]); setSuppliers([]);
     setEditingProduct(null); setProductForVenta(null); setProductForReserva(null);
-    await supabase.from('productos').delete().neq('sku', '');
+    if (boutiqueId) await vaciarTablasBoutique(boutiqueId);
     showToast('Se eliminaron todas las prendas, stock, movimientos, reservas, promociones y proveedores.');
   };
 

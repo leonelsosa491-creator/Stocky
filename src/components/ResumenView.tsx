@@ -17,6 +17,7 @@ import {
   Calendar,
   Moon,
   Sun,
+  Sunrise,
   RotateCcw,
   X,
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
 import { CategorySummary, ProductItem, StockMovement, ReservaItem } from '../types';
 import { Can, ROLES_GESTION } from './auth/Can';
 import { ReporteImprimible } from './ReporteImprimible';
+import { useAuth } from '../context/AuthContext';
 
 interface ResumenViewProps {
   categories: CategorySummary[];
@@ -58,11 +60,17 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
   onSelectCategoryWithFilter,
   onExport,
 }) => {
+  // Saludo según la hora, con el nombre de pila de quien está logueada
+  const { user } = useAuth();
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const nombrePila = user?.name?.trim().split(' ')[0] ?? '';
+  const SaludoIcono = hora < 12 ? Sunrise : hora < 20 ? Sun : Moon;
+  const saludoIconColor = hora < 20 ? 'text-amber-500' : 'text-[#42308f]';
+
   const [categorySearch, setCategorySearch] = useState('');
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   
-  // Estado fundamental para que funcione el switch
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isReporteOpen, setIsReporteOpen] = useState(false);
 
   // Filters: Season & Date
@@ -283,33 +291,24 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
       {/* Top Title Bar */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
         <div>
+          <p className="flex items-center gap-2 mb-1 font-heading text-lg font-semibold tracking-tight text-[#5e5d69]">
+            <span>
+              {saludo}
+              {nombrePila && (
+                <>
+                  ,{' '}
+                  <span className="font-extrabold text-[#42308f]">{nombrePila}</span>
+                </>
+              )}
+            </span>
+            <SaludoIcono className={`w-5 h-5 ${saludoIconColor}`} />
+          </p>
           <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight">
             Resumen de Stock
           </h1>
         </div>
         
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-          {/* BOTÓN SWITCH MODO CLARO/OSCURO */}
-          <button
-            onClick={() => {
-              setIsDarkMode(!isDarkMode);
-              // Activa el modo oscuro en toda la app
-              document.documentElement.classList.toggle('dark'); 
-            }}
-            className={`relative inline-flex items-center h-[34px] w-[60px] rounded-full transition-colors cursor-pointer shadow-inner border ${
-              isDarkMode ? 'bg-[#42308f] border-[#42308f]' : 'bg-[#f8f9ff] border-[#c9c4d3]/60'
-            }`}
-            title="Alternar Modo Oscuro"
-          >
-            <span
-              className={`inline-flex items-center justify-center w-6 h-6 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
-                isDarkMode ? 'translate-x-[30px]' : 'translate-x-1'
-              }`}
-            >
-              {isDarkMode ? <Moon className="w-3.5 h-3.5 text-[#42308f]" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />}
-            </span>
-          </button>
-
           {onOpenCrearStock && (
             <Can role={['developer', 'admin']}>
               <button

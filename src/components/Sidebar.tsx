@@ -8,7 +8,6 @@ import {
   CalendarCheck,
   Tag,
   Truck,
-  Store,
   X,
   TrendingUp,
   Terminal,
@@ -18,6 +17,8 @@ import {
 import { NavScreen } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Can } from './auth/Can';
+import stockyLogo from '../assets/logo-stocky-recortado.png';
+import stockyIcono from '../assets/logo-stocky-icono.png';
 
 interface SidebarProps {
   currentScreen?: NavScreen;
@@ -103,16 +104,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div
           onClick={() => handleNav('/dashboard', 'resumen')}
-          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-2'} mb-6 cursor-pointer group transition-all`}
+          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-2'} mb-6 cursor-pointer group transition-all`}
         >
-          <div className="w-10 h-10 rounded-2xl bg-[#5a49a8] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
-            <Store className="w-5 h-5" />
-          </div>
-          {!isCollapsed && (
-            <div className="overflow-hidden whitespace-nowrap animate-in fade-in slide-in-from-left-2">
-              <h1 className="font-heading text-lg font-bold text-[#42308f] leading-tight">Stocky</h1>
-              <p className="font-body text-[11px] text-[#5e5d69] font-medium tracking-tight">Aries Boutique</p>
-            </div>
+          {isCollapsed ? (
+            // Colapsado no entra el logo completo: queda solo la "S" con la percha
+            <img
+              src={stockyIcono}
+              alt="Stocky"
+              className="w-14 h-auto select-none group-hover:scale-105 transition-transform"
+              draggable={false}
+            />
+          ) : (
+            <img
+              src={stockyLogo}
+              alt="Stocky"
+              className="h-14 w-auto select-none group-hover:scale-105 transition-transform origin-left animate-in fade-in"
+              draggable={false}
+            />
           )}
         </div>
 

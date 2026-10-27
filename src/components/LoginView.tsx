@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Store, User, AtSign, Mail, Lock, Eye, EyeOff, ArrowRight, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import stockyLogo from '../assets/logo-stocky-recortado.png';
+import stockyLogoClaro from '../assets/logo-stocky-claro.png';
 // @ts-ignore - supabaseClient es .js puro
 import { getRecordarSesion } from '../supabase/supabaseClient';
 
@@ -119,30 +121,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
           ))}
         </svg>
 
-        <div className="relative flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center">
-            <Store className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="font-heading text-xl font-bold leading-tight">Stocky Boutique</h1>
-            <p className="text-xs tracking-wide text-white/70 uppercase">Aries Indumentaria</p>
-          </div>
-        </div>
+        <img
+          src={stockyLogoClaro}
+          alt="Stocky"
+          className="relative w-[clamp(130px,12vw,240px)] h-auto self-start select-none"
+          draggable={false}
+        />
 
-        <h2 className="relative font-heading text-5xl xl:text-6xl font-extrabold leading-[1.1] tracking-tight max-w-lg">
-          Control preciso de tu catálogo y stock.
-        </h2>
+        <div className="relative max-w-xl">
+          <h2 className="font-heading text-5xl xl:text-6xl font-extrabold leading-[1.1] tracking-tight">
+            Control preciso de tu catálogo y stock.
+          </h2>
+          <p className="mt-6 text-xl xl:text-2xl font-light leading-snug text-[#cdbdf5] max-w-md">
+            Gestioná tus prendas, variantes y ventas en tiempo real.
+          </p>
+        </div>
 
         <div />
       </aside>
 
       {/* Formulario */}
       <main className="flex-1 flex flex-col justify-center items-center px-5 py-12 sm:px-10">
-        <div className="lg:hidden flex items-center gap-3 mb-10">
-          <div className="w-11 h-11 rounded-2xl bg-[#5a3aa8] text-white flex items-center justify-center">
-            <Store className="w-5 h-5" />
-          </div>
-          <span className="font-heading text-lg font-bold text-[#1a1740]">Stocky Boutique</span>
+        <div className="lg:hidden mb-10">
+          <img src={stockyLogo} alt="Stocky" className="h-14 w-auto select-none" draggable={false} />
         </div>
 
         <div className="w-full max-w-md">

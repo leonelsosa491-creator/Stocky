@@ -31,7 +31,7 @@ import stockyLogoClaro from '../assets/logo-stocky-claro.png';
 import { getRecordarSesion } from '../supabase/supabaseClient';
 
 interface LoginViewProps {
-  onLoginSuccess: (email: string) => void;
+  onLoginSuccess: (name: string) => void;
   onBackToApp: () => void;
 }
 
@@ -104,7 +104,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
     }
 
     try {
-      let loggedEmail = email;
+      let loggedName = `${firstName.trim()} ${lastName.trim()}`.trim();
       if (isRegistering) {
         await register(`${firstName.trim()} ${lastName.trim()}`, email, password, undefined, {
           businessName: hasInvite ? undefined : businessName.trim(),
@@ -114,9 +114,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onBackToAp
           username: username.trim(),
         });
       } else {
-        loggedEmail = await login(email, password, recordar);
+        loggedName = await login(email, password, recordar);
       }
-      onLoginSuccess(loggedEmail);
+      onLoginSuccess(loggedName);
       onBackToApp();
     } catch (err: any) {
       setError(

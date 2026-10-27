@@ -119,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return (data as string | null) || null;
   };
 
-  // Acepta usuario o correo. Devuelve el correo con el que se inició sesión.
+  // Acepta usuario o correo. Devuelve el nombre del usuario autenticado.
   const login = async (identifier: string, password: string, remember = true): Promise<string> => {
     setRecordarSesion(remember);
     const value = identifier.trim();
@@ -141,12 +141,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       throw error;
     }
-    if (data.user) {
-      const u = await cargarUsuario(data.user);
-      if (!u) throw new Error(CUENTA_DESACTIVADA);
-      setUser(u);
-    }
-    return email;
+    if (!data.user) throw new Error('No se pudo obtener el usuario autenticado.');
+    const u = await cargarUsuario(data.user);
+    if (!u) throw new Error(CUENTA_DESACTIVADA);
+    setUser(u);
+    return u.name;
   };
 
   const register = async (

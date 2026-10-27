@@ -782,7 +782,7 @@ export default function App() {
     <>
       <Routes>
         <Route path="/recuperar-clave" element={<RecuperarClaveView />} />
-        <Route path="/login" element={<LoginView onLoginSuccess={(email) => { showToast(`¡Bienvenida, ${email.split('@')[0]}!`); }} onBackToApp={() => navigate('/dashboard')} />} />
+        <Route path="/login" element={<LoginView onLoginSuccess={(name) => { showToast(`¡Bienvenida, ${name}!`); }} onBackToApp={() => navigate('/dashboard')} />} />
         <Route element={<ProtectedRoute />}>
           <Route
             element={

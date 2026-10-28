@@ -109,6 +109,7 @@ const buildSteps = (canManage: boolean): Step[] => {
         },
         {
           target: '#tour-categoria-datos',
+          spotlightTarget: '#tour-categoria-panel',
           placement: 'right',
           title: 'Completá los datos básicos',
           content:
@@ -125,7 +126,7 @@ const buildSteps = (canManage: boolean): Step[] => {
         },
         {
           target: '#btn-guardar-categoria',
-          spotlightTarget: '#tour-categoria-form',
+          spotlightTarget: '#tour-categoria-panel',
           placement: 'top',
           title: 'Guardá tu categoría',
           content:

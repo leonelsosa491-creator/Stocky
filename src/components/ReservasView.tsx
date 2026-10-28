@@ -429,7 +429,7 @@ export const ReservasView: React.FC<ReservasViewProps> = ({
 
       {/* Modal: Confirmar Retiro & Cobro de Saldo Restante */}
       {reservaToPickup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-[#c9c4d3]/40 space-y-4">
             <div className="flex justify-between items-start">
               <div>
@@ -514,7 +514,7 @@ export const ReservasView: React.FC<ReservasViewProps> = ({
 
       {/* Modal: Confirmar Eliminación de Reserva */}
       {reservaToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-rose-200 space-y-4">
             <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />

@@ -104,6 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Mobile Menu Button & Brand */}
       <div className="flex items-center gap-3 md:hidden">
         <button
+          id="tour-btn-menu-movil"
           onClick={onOpenMobileMenu}
           className="p-2 text-[#484552] hover:text-[#42308f] rounded-lg hover:bg-white transition-colors"
           aria-label="Abrir menú"

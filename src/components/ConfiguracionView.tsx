@@ -9,7 +9,9 @@ import {
   RotateCcw,
   User as UserIcon,
   Upload,
-  Sparkles
+  Sparkles,
+  GraduationCap,
+  PlayCircle
 } from 'lucide-react';
 import { AppUser, UserRole } from '../types';
 import { DEFAULT_SETTINGS, loadStoreSettings, saveStoreSettings } from '../utils/storage';
@@ -17,6 +19,7 @@ import { Can } from './auth/Can';
 import { InvitacionesPanel } from './InvitacionesPanel';
 import { EquipoPanel } from './EquipoPanel';
 import { useAuth } from '../context/AuthContext';
+import { useTour } from '../context/TourContext';
 import { supabase } from '../supabase/supabaseClient';
 
 interface ConfiguracionViewProps {
@@ -46,6 +49,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   onClearAllTestData,
 }) => {
   const { user, role, refreshUser } = useAuth();
+  const { restartTour } = useTour();
   
   const [saved, setSaved] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -197,6 +201,32 @@ const rutaAvatarEnStorage = (url?: string | null): string | null => {
         <p className="text-sm text-[#5e5d69] mt-1">
           Ajustes de tu perfil personal, la boutique y reglas de stock.
         </p>
+      </div>
+
+      {/* TUTORIAL INTERACTIVO */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#42308f] to-[#5a49a8] rounded-3xl p-6 sm:p-8 card-shadow card-hover text-white animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute right-24 -bottom-12 w-32 h-32 rounded-full bg-white/5 blur-xl pointer-events-none" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+          <div className="w-12 h-12 shrink-0 rounded-2xl bg-white/15 flex items-center justify-center">
+            <GraduationCap className="w-6 h-6" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-heading text-lg font-bold">Tutorial interactivo</h2>
+            <p className="text-sm text-white/80 mt-1">
+              Repasá paso a paso cómo crear categorías, navegar el sistema y registrar ventas.
+            </p>
+          </div>
+          <button
+            id="btn-repetir-tutorial"
+            type="button"
+            onClick={restartTour}
+            className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full bg-white text-[#42308f] text-sm font-bold shadow-md hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.02] active:scale-95 transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          >
+            <PlayCircle className="w-4 h-4" />
+            Volver a ver el tutorial interactivo
+          </button>
+        </div>
       </div>
 
       {/* SECCIÓN 1: PERFIL DE USUARIO */}
@@ -512,7 +542,7 @@ const rutaAvatarEnStorage = (url?: string | null): string | null => {
 
       {/* Modal Confirmación de Eliminación Total */}
       {isConfirmClearModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-rose-200 space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">

@@ -12,7 +12,12 @@ export type TourEvent =
   | 'categoria-creada-con-prenda'
   | 'cargar-prenda-abierto'
   | 'cargar-prenda-cerrado'
-  | 'prenda-cargada';
+  | 'prenda-cargada'
+  | 'venta-abierta'
+  | 'venta-cerrada'
+  | 'venta-carrito-listo'
+  | 'venta-carrito-vacio'
+  | 'venta-registrada';
 
 interface TourContextType {
   isTourRunning: boolean;
@@ -34,6 +39,8 @@ const ROLES_GESTION = ['developer', 'admin'];
 const CATEGORY_MODAL_STEPS = ['categoria-datos', 'categoria-guardar'];
 const PRENDA_MODAL_STEPS = ['prenda-datos', 'prenda-guardar'];
 const INTERACTIVE_STEPS = ['crear-categoria', ...CATEGORY_MODAL_STEPS, 'cargar-prenda', ...PRENDA_MODAL_STEPS];
+const VENTA_MODAL_STEPS = ['venta-elegir', 'venta-confirmar'];
+const VENTA_STEPS = ['registrar-venta', ...VENTA_MODAL_STEPS];
 
 const storageKey = (userId: string) => `${TOUR_STORAGE_PREFIX}${userId}`;
 
@@ -203,7 +210,7 @@ const buildSteps = (canManage: boolean): Step[] => {
           placement: 'center',
           title: '¡Prenda cargada!',
           content:
-            'Ya está en tu inventario. Desde el Stock Físico podés reponer unidades, editarla o reservarla para una clienta.',
+            'Ya está en tu inventario. Desde el Stock Físico podés reponer unidades, editarla o reservarla. Ahora vamos a venderla.',
           buttons: ['skip', 'primary'],
         },
       ),
@@ -212,15 +219,53 @@ const buildSteps = (canManage: boolean): Step[] => {
 
   steps.push(
     step(
-      { id: 'registrar-venta' },
+      { id: 'registrar-venta', waitForAction: true, hint: 'Hacé clic en "Registrar Venta" para continuar' },
       {
         target: findVisible('#btn-resumen-registrar-venta', '#btn-stock-registrar-venta'),
         placement: 'bottom',
-        title: 'Registrá tus ventas',
+        title: 'Registrá tu primera venta',
         content:
-          'Con "Registrar Venta" elegís las prendas vendidas, aplicás promociones y el stock se descuenta automáticamente.',
+          'Cada vez que vendés, lo registrás acá y el stock se descuenta solo. Hacé clic en "Registrar Venta".',
+        buttons: ['skip'],
         spotlightRadius: 999,
         spotlightPadding: 6,
+      },
+    ),
+    step(
+      { id: 'venta-elegir', waitForAction: true, hint: 'Tocá "Vender" en una prenda de la lista' },
+      {
+        target: '#tour-venta-lista',
+        spotlightTarget: '#modal-registrar-venta-container',
+        placement: 'right',
+        title: 'Elegí la prenda vendida',
+        content:
+          'Buscá la prenda por nombre o código y tocá "Vender" para sumarla al carrito. Podés agregar varias.',
+        buttons: ['skip'],
+        spotlightRadius: 24,
+      },
+    ),
+    step(
+      { id: 'venta-confirmar', waitForAction: true, hint: 'Tocá "Confirmar Venta y Descontar Stock"' },
+      {
+        target: '#btn-confirmar-venta-descontar-stock',
+        spotlightTarget: '#modal-registrar-venta-container',
+        placement: 'left',
+        title: 'Confirmá la venta',
+        content:
+          'Revisá el carrito, elegí el medio de pago (y si querés, los datos de la clienta). Después tocá "Confirmar Venta y Descontar Stock".',
+        buttons: ['skip'],
+        spotlightRadius: 24,
+      },
+    ),
+    step(
+      { id: 'venta-registrada' },
+      {
+        target: 'body',
+        placement: 'center',
+        title: '¡Venta registrada!',
+        content:
+          'El stock ya se descontó y la venta quedó en tus movimientos. Desde el comprobante podés imprimirlo o mandarlo por WhatsApp.',
+        buttons: ['skip', 'primary'],
       },
     ),
     step(
@@ -230,7 +275,7 @@ const buildSteps = (canManage: boolean): Step[] => {
         placement: 'center',
         title: '¡Todo listo!',
         content:
-          'Ya conocés lo básico. Podés volver a ver este tutorial cuando quieras desde Configuración › Sistema & Accesos.',
+          'Ya creaste una categoría, cargaste una prenda y registraste una venta. Podés volver a ver este tutorial cuando quieras desde Configuración › Sistema & Accesos.',
         buttons: ['primary'],
       },
     ),
@@ -414,6 +459,16 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
         goTo(indexOf('cargar-prenda'));
       } else if (event === 'prenda-cargada' && currentId && PRENDA_MODAL_STEPS.includes(currentId)) {
         goTo(indexOf('prenda-cargada'));
+      } else if (event === 'venta-abierta' && currentId === 'registrar-venta') {
+        goTo(indexOf('venta-elegir'));
+      } else if (event === 'venta-cerrada' && currentId && VENTA_MODAL_STEPS.includes(currentId)) {
+        goTo(indexOf('registrar-venta'));
+      } else if (event === 'venta-carrito-listo' && currentId === 'venta-elegir') {
+        goTo(indexOf('venta-confirmar'));
+      } else if (event === 'venta-carrito-vacio' && currentId === 'venta-confirmar') {
+        goTo(indexOf('venta-elegir'));
+      } else if (event === 'venta-registrada' && currentId && VENTA_MODAL_STEPS.includes(currentId)) {
+        goTo(indexOf('venta-registrada'));
       }
     },
     [run, steps, goTo, indexOf],
@@ -440,7 +495,9 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (type === EVENTS.TARGET_NOT_FOUND) {
         const currentId = steps[index]?.id;
-        if (currentId && INTERACTIVE_STEPS.includes(currentId)) {
+        if (currentId && VENTA_STEPS.includes(currentId)) {
+          goTo(indexOf('fin'));
+        } else if (currentId && INTERACTIVE_STEPS.includes(currentId)) {
           const ventaIndex = indexOf('registrar-venta');
           goTo(ventaIndex >= 0 ? ventaIndex : index + 1);
         } else if (index + 1 >= steps.length) {

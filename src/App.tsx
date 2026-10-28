@@ -330,6 +330,7 @@ export default function App() {
     }
     setProductForVenta(product || null);
     setIsRegistrarVentaOpen(true);
+    notifyTour('venta-abierta');
   };
 
   const handleOpenNuevaReserva = (product?: ProductItem) => {
@@ -690,6 +691,7 @@ export default function App() {
   };
 
   const handleConfirmSale = (saleData: any) => {
+    notifyTour('venta-registrada');
     const soldSkuMap = new Map<string, number>();
     saleData.items.forEach((item: any) => { soldSkuMap.set(item.sku, (soldSkuMap.get(item.sku) || 0) + item.quantity); });
     
@@ -918,7 +920,7 @@ export default function App() {
                 <ModalPresence show={isNuevoIngresoOpen}><NuevoIngresoModal isOpen={isNuevoIngresoOpen} onClose={() => setIsNuevoIngresoOpen(false)} products={products} categories={categories.map((c) => c.name)} onAddStock={handleAddStock} /></ModalPresence>
                 <ModalPresence show={isCrearStockOpen}><CrearStockModal isOpen={isCrearStockOpen} onClose={handleCloseCrearStock} existingCategoryNames={categories.map((c) => c.name)} onCreateStock={handleCreateStock} /></ModalPresence>
                 <ModalPresence show={isCargarProductoOpen}><CargarProductoModal isOpen={isCargarProductoOpen} onClose={() => { setIsCargarProductoOpen(false); setCargarProductToEdit(null); setProductToReplenish(null); notifyTour('cargar-prenda-cerrado'); }} products={products} categories={categories.map((c) => c.name)} defaultCategory={categoryForCargar || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos')} onSaveProduct={handleSaveCargarProducto} onSaveBatchProducts={handleSaveBatchProducts} onReplenishProduct={handleReplenishStock} productToEdit={cargarProductToEdit} productToReplenish={productToReplenish} initialMode={cargarModalInitialMode} onCreateCategory={handleCreateCategoryInline} /></ModalPresence>
-                <ModalPresence show={isRegistrarVentaOpen}><RegistrarVentaModal isOpen={isRegistrarVentaOpen} onClose={() => { setIsRegistrarVentaOpen(false); setProductForVenta(null); }} products={products} promotions={promotions} initialProduct={productForVenta} onConfirmSale={handleConfirmSale} /></ModalPresence>
+                <ModalPresence show={isRegistrarVentaOpen}><RegistrarVentaModal isOpen={isRegistrarVentaOpen} onClose={() => { setIsRegistrarVentaOpen(false); setProductForVenta(null); notifyTour('venta-cerrada'); }} products={products} promotions={promotions} initialProduct={productForVenta} onConfirmSale={handleConfirmSale} /></ModalPresence>
                 <ModalPresence show={Boolean(editingProduct)}><EditarStockModal isOpen={Boolean(editingProduct)} onClose={() => setEditingProduct(null)} product={editingProduct} onSaveProduct={handleSaveProduct} /></ModalPresence>
                 <ModalPresence show={isPromotionModalOpen}><PromocionModal isOpen={isPromotionModalOpen} onClose={() => { setIsPromotionModalOpen(false); setEditingPromotion(null); }} onSave={handleSavePromotion} promotionToEdit={editingPromotion} products={products} /></ModalPresence>
                 <ModalPresence show={isNuevaReservaOpen}><NuevaReservaModal isOpen={isNuevaReservaOpen} onClose={() => { setIsNuevaReservaOpen(false); setProductForReserva(null); }} products={products} onCreateReserva={handleCreateReserva} initialProduct={productForReserva} /></ModalPresence>

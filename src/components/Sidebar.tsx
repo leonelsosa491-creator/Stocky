@@ -77,7 +77,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-white border-r border-[#c9c4d3]/40 z-50 flex flex-col p-5 transition-all duration-300 ease-in-out ${
+        id="tour-sidebar"
+        className={`tour-step-sidebar fixed left-0 top-0 h-full bg-white border-r border-[#c9c4d3]/40 z-50 flex flex-col p-5 transition-all duration-300 ease-in-out ${
           isOpenMobile 
             ? 'translate-x-0 w-[270px]' 
             : `-translate-x-full md:translate-x-0 ${isCollapsed ? 'md:w-[88px] md:px-3' : 'md:w-[270px]'}`
@@ -125,7 +126,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex flex-col gap-1 flex-grow overflow-y-auto overflow-x-hidden pr-1 pb-6 custom-scrollbar">
+        <nav
+          key={`${isCollapsed ? 'colapsado' : 'expandido'}-${isOpenMobile ? 'movil' : 'fijo'}`}
+          className="sidebar-stagger flex flex-col gap-1 flex-grow overflow-y-auto overflow-x-hidden pr-1 pb-6 custom-scrollbar">
           
           {!isCollapsed ? (
             <span className="text-[10px] font-bold text-[#797583] uppercase tracking-wider px-3 py-1 whitespace-nowrap">
@@ -135,14 +138,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="h-4"></div>
           )}
 
-          {mainNavItems.map((item) => {
+          {mainNavItems.map((item, i) => {
             const isActive = currentPath === item.path || currentScreen === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNav(item.path, item.id)}
                 title={isCollapsed ? item.label : undefined}
-                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
+                style={{ animationDelay: `${80 + i * 45}ms` }}
+                className={`sidebar-item flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-[#e1deed] text-[#42308f] shadow-2xs font-extrabold'
                     : 'text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f]'
@@ -161,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={() => handleNav('/reportes-ventas', 'reportes' as NavScreen)}
               title={isCollapsed ? "Reportes" : undefined}
-              className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
+              className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all sidebar-item ${
                 currentPath === '/reportes-ventas'
                   ? 'bg-[#e1deed] text-[#42308f] shadow-2xs font-extrabold'
                   : 'text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f]'
@@ -188,7 +192,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={() => handleNav('/configuracion-sistema', 'configuracion')}
                 title={isCollapsed ? "Config. Sistema" : undefined}
-                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all ${
+                className={`flex items-center ${isCollapsed ? 'justify-center p-2.5 mx-auto w-11 h-11' : 'gap-3 px-3.5 py-2.5 w-full'} rounded-2xl text-xs font-bold transition-all sidebar-item ${
                   currentPath === '/configuracion-sistema'
                     ? 'bg-rose-100 text-rose-900 shadow-2xs font-extrabold'
                     : 'text-rose-900/80 hover:bg-rose-50 hover:text-rose-950'

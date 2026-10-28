@@ -47,7 +47,7 @@ interface ResumenViewProps {
 /* ------------------------------------------------------------------ */
 /* Tokens de diseño compartidos (un solo lugar para mantener la armonía) */
 /* ------------------------------------------------------------------ */
-const CARD = 'bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow';
+const CARD = 'bg-white rounded-3xl border border-[#c9c4d3]/40 card-shadow card-hover';
 const FOCUS =
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#42308f]/40 focus-visible:ring-offset-1';
 
@@ -417,7 +417,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
 
   // Clases comunes de botones del encabezado (misma altura y radio)
   const headerBtn =
-    'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full text-sm font-bold transition-all active:scale-95 cursor-pointer';
+    'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#42308f]/15 active:scale-95 active:translate-y-0 cursor-pointer';
 
   // Clases comunes de controles de filtro (misma altura)
   const pillBase = `h-9 px-4 rounded-full text-[13px] font-semibold transition-colors cursor-pointer ${FOCUS}`;
@@ -449,11 +449,12 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
           {onOpenCrearStock && (
             <Can role={['developer', 'admin']}>
               <button
+                id="btn-crear-categoria"
                 onClick={onOpenCrearStock}
-                className={`${headerBtn} bg-white border border-[#42308f]/40 text-[#42308f] hover:bg-[#f8f9ff] ${FOCUS}`}
+                className={`${headerBtn} tour-step-crear-categoria bg-white border border-[#42308f]/40 text-[#42308f] hover:bg-[#f8f9ff] ${FOCUS}`}
               >
                 <Plus className="w-4 h-4" />
-                Crear Stock
+                Crear Categoría
               </button>
             </Can>
           )}
@@ -1101,12 +1102,12 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         </div>
       )}
 
-      {/* ---------------- INVENTARIO POR COLECCIÓN ---------------- */}
+      {/* ---------------- INVENTARIO POR CATEGORÍA ---------------- */}
       <div className={`${CARD} overflow-hidden`}>
         <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="font-heading text-xl font-bold text-[#0b1c30]">
-              Inventario por Colección
+              Inventario por Categoría
             </h2>
             <p className="text-xs text-[#5e5d69] mt-0.5">
               Prendas físicas en perchero y modelos que requieren reposición
@@ -1120,8 +1121,8 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                 type="text"
                 value={categorySearch}
                 onChange={(e) => setCategorySearch(e.target.value)}
-                placeholder="Buscar colección..."
-                aria-label="Buscar colección"
+                placeholder="Buscar categoría..."
+                aria-label="Buscar categoría"
                 className={`h-9 pl-10 pr-9 text-[13px] bg-[#f8f9ff] border border-[#c9c4d3]/50 rounded-full focus:border-[#42308f] text-[#0b1c30] w-full sm:w-56 transition-all ${FOCUS}`}
               />
               {categorySearch && (
@@ -1142,7 +1143,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                   className={`inline-flex items-center gap-1.5 h-9 px-4 bg-[#f4f1fb] text-[#42308f] hover:bg-[#ebe6f7] rounded-full text-[13px] font-bold transition-colors cursor-pointer ${FOCUS}`}
                 >
                   <Plus className="w-4 h-4" />
-                  Nuevo Stock
+                  Nueva Categoría
                 </button>
               </Can>
             )}
@@ -1159,7 +1160,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
         {filteredCategories.length === 0 ? (
           <div className="p-8 text-center text-[13px] text-[#5e5d69]">
             <p className="font-semibold text-[#0b1c30]">
-              No se encontraron colecciones con el término &quot;{categorySearch}&quot;
+              No se encontraron categorías con el término &quot;{categorySearch}&quot;
             </p>
             <button
               type="button"

@@ -27,6 +27,7 @@ import { ProductItem, Promotion, CategorySummary } from '../types';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { Can, ROLES_GESTION, useCan } from './auth/Can';
 import { useAuth } from '../context/AuthContext';
+import { ModalPresence } from './ModalPresence';
 import {
   MAIN_COLOR_FAMILIES,
   matchesColorFamily,
@@ -140,7 +141,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
         outOfStock: 0,
         actionType: 'detalles',
         icon: 'tshirt',
-        description: `Colección de ${selectedCategory}`,
+        description: `Categoría de ${selectedCategory}`,
         facilityDefault: 'Depósito Central',
       });
     }
@@ -337,6 +338,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           <div className="flex flex-wrap items-center gap-2.5">
             {onOpenRegistrarVenta && (
               <button
+                id="btn-stock-registrar-venta"
                 onClick={() => onOpenRegistrarVenta()}
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
                 title={`Registrar venta realizada por ${user?.name || 'la persona logueada'} (Descuenta stock)`}
@@ -664,14 +666,14 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
                       setNewCategoryName(selectedCategory);
                     }}
                     className="p-1.5 text-gray-400 hover:text-[#42308f] hover:bg-[#eff4ff] rounded-lg transition-colors cursor-pointer"
-                    title="Renombrar Colección/Stock"
+                    title="Renombrar categoría"
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setCategoryToDelete(selectedCategory)}
                     className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                    title="Eliminar Colección completa"
+                    title="Eliminar categoría completa"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -710,7 +712,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </div>
             <div>
               <h4 className="font-heading text-lg font-bold text-[#0b1c30]">
-                {statusFilter === 'bajo' ? '¡Excelente! No hay prendas con stock bajo en esta selección' : statusFilter === 'agotado' ? 'No hay prendas agotadas en esta selección' : 'No hay prendas cargadas en este stock con los filtros actuales'}
+                {statusFilter === 'bajo' ? '¡Excelente! No hay prendas con stock bajo en esta selección' : statusFilter === 'agotado' ? 'No hay prendas agotadas en esta selección' : 'No hay prendas cargadas en esta categoría con los filtros actuales'}
               </h4>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
@@ -830,6 +832,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
       </div>
 
       {/* Modal para Eliminar Prenda Individual */}
+      <ModalPresence show={Boolean(productToDelete)}>
       {productToDelete && (
         <ConfirmDeleteModal
           isOpen={Boolean(productToDelete)}
@@ -847,8 +850,10 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           itemDetail={`Categoría: ${productToDelete?.category} | Talle: ${productToDelete?.size} | Stock actual: ${productToDelete?.stock} u.`}
         />
       )}
+      </ModalPresence>
 
-      {/* Modal Reutilizado para Eliminar Colección Completa */}
+      {/* Modal Reutilizado para Eliminar Categoría Completa */}
+      <ModalPresence show={Boolean(categoryToDelete)}>
       {categoryToDelete && (
         <ConfirmDeleteModal
           isOpen={Boolean(categoryToDelete)}
@@ -860,21 +865,23 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
               onNavigateToResumen(); 
             }
           }}
-          title="Eliminar Colección Completa"
+          title="Eliminar Categoría Completa"
           itemName={categoryToDelete}
-          itemType="la colección"
-          confirmText="Sí, Eliminar Colección y sus Prendas"
-          itemDetail={`¡ATENCIÓN PELIGRO! Se eliminarán permanentemente las ${filteredProducts.length} prendas que pertenecen a esta colección.`}
+          itemType="la categoría"
+          confirmText="Sí, Eliminar Categoría y sus Prendas"
+          itemDetail={`¡ATENCIÓN PELIGRO! Se eliminarán permanentemente las ${filteredProducts.length} prendas que pertenecen a esta categoría.`}
         />
       )}
+      </ModalPresence>
 
-      {/* Mini-Modal para Renombrar Colección */}
+      {/* Mini-Modal para Renombrar Categoría */}
+      <ModalPresence show={Boolean(categoryToRename)}>
       {categoryToRename && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm card-shadow border border-[#c9c4d3]/40 animate-in fade-in zoom-in-95">
-            <h3 className="font-heading font-bold text-lg text-[#0b1c30] mb-2">Renombrar Colección</h3>
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm card-shadow border border-[#c9c4d3]/40 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="font-heading font-bold text-lg text-[#0b1c30] mb-2">Renombrar Categoría</h3>
             <p className="text-xs text-[#5e5d69] mb-4">
-              Ingresá el nuevo nombre para la colección <span className="font-bold text-[#0b1c30]">"{categoryToRename}"</span>. 
+              Ingresá el nuevo nombre para la categoría <span className="font-bold text-[#0b1c30]">"{categoryToRename}"</span>. 
               Esto actualizará automáticamente todas sus prendas asociadas.
             </p>
             <input
@@ -909,6 +916,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
           </div>
         </div>
       )}
+      </ModalPresence>
     </div>
   );
 };

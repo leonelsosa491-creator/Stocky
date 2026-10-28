@@ -297,7 +297,7 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl max-w-xl w-full card-shadow border border-[#c9c4d3]/40 p-5 sm:p-7 animate-in fade-in zoom-in-95 duration-200 max-h-[94vh] flex flex-col">
         <div className="flex justify-between items-start pb-4 border-b border-gray-100 shrink-0">
           <div>
@@ -456,7 +456,7 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-700">Tipo de Prenda / Categoría de Stock *</label>
+                  <label className="text-xs font-bold text-gray-700">Tipo de Prenda / Categoría *</label>
                   {!productToEdit && (
                     <button type="button" onClick={() => setIsCreatingNewCategory(!isCreatingNewCategory)} className="text-[11px] font-bold text-[#42308f] hover:underline">
                       {isCreatingNewCategory ? '← Elegir de la lista' : '+ Crear nueva categoría'}

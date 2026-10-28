@@ -421,7 +421,7 @@ export const ProveedoresView: React.FC<ProveedoresViewProps> = ({
 
       {/* Modal: Crear / Editar Proveedor o Fábrica */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-[#c9c4d3]/40 space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
             <div className="flex justify-between items-start pb-3 border-b border-gray-100">
               <div>
@@ -599,7 +599,7 @@ export const ProveedoresView: React.FC<ProveedoresViewProps> = ({
 
       {/* Modal: Confirmar Eliminación */}
       {supplierToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 space-y-4">
             <h3 className="font-heading font-bold text-base text-[#0b1c30]">
               ¿Eliminar {supplierToDelete.type || 'registro'}?

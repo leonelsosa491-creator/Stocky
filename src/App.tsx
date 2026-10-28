@@ -59,6 +59,8 @@ import { RoleRoute } from './components/auth/RoleRoute';
 import { ReportesVentasView } from './components/ReportesVentasView';
 import { ConfiguracionSistemaView } from './components/ConfiguracionSistemaView';
 import { CheckCircle2 } from 'lucide-react';
+import { useTour } from './context/TourContext';
+import { ModalPresence } from './components/ModalPresence';
 
 // Traductores
 const mapDbToProduct = (row: any): ProductItem => ({
@@ -106,6 +108,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { notifyTour } = useTour();
   const boutiqueId = user?.boutiqueId;
 
   const currentScreen = useMemo<NavScreen>(() => {
@@ -174,7 +177,7 @@ export default function App() {
         outOfStock: 0,
         actionType: 'detalles',
         icon: c.icon || 'tshirt',
-        description: c.description || `Colección de ${c.name}`,
+        description: c.description || `Categoría de ${c.name}`,
         facilityDefault: c.facility_default || 'Depósito Central',
       }));
 
@@ -253,7 +256,7 @@ export default function App() {
     await supabase.from('categorias').update({ name: newName }).eq('name', oldName);
     setProducts((prev) => prev.map((prod) => prod.category === oldName ? { ...prod, category: newName } : prod));
     setCategoriesBase((prev) => prev.map((cat) => cat.name === oldName ? { ...cat, name: newName } : cat));
-    showToast(`La colección "${oldName}" ahora se llama "${newName}"`);
+    showToast(`La categoría "${oldName}" ahora se llama "${newName}"`);
   };
 
   const handleDeleteCategory = async (categoryName: string) => {
@@ -261,7 +264,7 @@ export default function App() {
     await supabase.from('categorias').delete().eq('name', categoryName);
     setProducts((prev) => prev.filter((prod) => prod.category !== categoryName));
     setCategoriesBase((prev) => prev.filter((cat) => cat.name !== categoryName));
-    showToast(`Se eliminó permanentemente la colección "${categoryName}"`);
+    showToast(`Se eliminó permanentemente la categoría "${categoryName}"`);
   };
 
   useEffect(() => { safeSet(STORAGE_KEYS.PRODUCTS, products); }, [products]);
@@ -291,7 +294,7 @@ export default function App() {
         outOfStock: outOfStockCount,
         actionType: outOfStockCount > 0 ? 'revisar' : 'detalles',
         icon: base.icon || 'tshirt',
-        description: base.description || `Colección de ${name}`,
+        description: base.description || `Categoría de ${name}`,
         facilityDefault: base.facilityDefault || 'Depósito Central',
       };
     });
@@ -340,7 +343,7 @@ export default function App() {
 
   const handleOpenCargarProducto = (category?: string, productToEdit?: ProductItem | null, initialMode: 'reponer' | 'nuevo' = 'reponer', itemToReplenish?: ProductItem | null) => {
     if (categoriesBase.length === 0) {
-      showToast('⚠️ Aún debes crear tu stock (botón "+ Nuevo") para cargar prendas.');
+      showToast('⚠️ Aún debes crear una categoría (botón "+ Crear Categoría") para cargar prendas.');
       return;
     }
     const cat = category || (selectedCategory !== 'Todas' ? selectedCategory : categoriesBase[0]?.name || 'General');
@@ -351,7 +354,15 @@ export default function App() {
     setIsCargarProductoOpen(true);
   };
 
-  const handleOpenCrearStock = () => setIsCrearStockOpen(true);
+  const handleOpenCrearStock = () => {
+    setIsCrearStockOpen(true);
+    notifyTour('crear-categoria-abierto');
+  };
+
+  const handleCloseCrearStock = () => {
+    setIsCrearStockOpen(false);
+    notifyTour('crear-categoria-cerrado');
+  };
 
   const handleSelectCategory = (categoryName: string) => {
     setSelectedCategory(categoryName);
@@ -460,6 +471,7 @@ export default function App() {
   };
 
   const handleCreateStock = async (newCat: CategorySummary, initialProduct?: ProductItem) => {
+    notifyTour('categoria-creada');
     if (boutiqueId) {
       await supabase.from('categorias').upsert({
         boutique_id: boutiqueId,
@@ -495,7 +507,7 @@ export default function App() {
     }
     setSelectedCategory(newCat.name);
     navigate('/stock');
-    showToast(`Stock de "${newCat.name}" creado con éxito`);
+    showToast(`Categoría "${newCat.name}" creada con éxito`);
   };
 
   const handleCreateCategoryInline = async (catName: string) => {
@@ -505,10 +517,10 @@ export default function App() {
         boutique_id: boutiqueId,
         name: catName,
         icon: 'tshirt',
-        description: `Colección de ${catName}`,
+        description: `Categoría de ${catName}`,
         facility_default: 'Depósito Central'
       });
-      setCategoriesBase((prev) => [...prev, { name: catName, totalItems: 0, inStock: 0, lowStock: 0, outOfStock: 0, actionType: 'detalles', icon: 'tshirt', description: `Colección de ${catName}`, facilityDefault: 'Depósito Central' }]);
+      setCategoriesBase((prev) => [...prev, { name: catName, totalItems: 0, inStock: 0, lowStock: 0, outOfStock: 0, actionType: 'detalles', icon: 'tshirt', description: `Categoría de ${catName}`, facilityDefault: 'Depósito Central' }]);
     }
   };
 
@@ -900,14 +912,14 @@ export default function App() {
                   />
                   <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto"><Outlet /></main>
                 </div>
-                <NuevoIngresoModal isOpen={isNuevoIngresoOpen} onClose={() => setIsNuevoIngresoOpen(false)} products={products} categories={categories.map((c) => c.name)} onAddStock={handleAddStock} />
-                <CrearStockModal isOpen={isCrearStockOpen} onClose={() => setIsCrearStockOpen(false)} existingCategoryNames={categories.map((c) => c.name)} onCreateStock={handleCreateStock} />
-                <CargarProductoModal isOpen={isCargarProductoOpen} onClose={() => { setIsCargarProductoOpen(false); setCargarProductToEdit(null); setProductToReplenish(null); }} products={products} categories={categories.map((c) => c.name)} defaultCategory={categoryForCargar || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos')} onSaveProduct={handleSaveCargarProducto} onSaveBatchProducts={handleSaveBatchProducts} onReplenishProduct={handleReplenishStock} productToEdit={cargarProductToEdit} productToReplenish={productToReplenish} initialMode={cargarModalInitialMode} onCreateCategory={handleCreateCategoryInline} />
-                <RegistrarVentaModal isOpen={isRegistrarVentaOpen} onClose={() => { setIsRegistrarVentaOpen(false); setProductForVenta(null); }} products={products} promotions={promotions} initialProduct={productForVenta} onConfirmSale={handleConfirmSale} />
-                <EditarStockModal isOpen={Boolean(editingProduct)} onClose={() => setEditingProduct(null)} product={editingProduct} onSaveProduct={handleSaveProduct} />
-                <PromocionModal isOpen={isPromotionModalOpen} onClose={() => { setIsPromotionModalOpen(false); setEditingPromotion(null); }} onSave={handleSavePromotion} promotionToEdit={editingPromotion} products={products} />
-                <NuevaReservaModal isOpen={isNuevaReservaOpen} onClose={() => { setIsNuevaReservaOpen(false); setProductForReserva(null); }} products={products} onCreateReserva={handleCreateReserva} initialProduct={productForReserva} />
-                <ConfirmDeleteModal isOpen={Boolean(deletingPromotion)} onClose={() => setDeletingPromotion(null)} onConfirm={handleDeletePromotionConfirm} title="Eliminar Promoción" itemName={deletingPromotion?.title || ''} itemDetail={deletingPromotion ? `Beneficio: ${deletingPromotion.discountType === 'porcentaje' ? `${deletingPromotion.discountValue}% OFF` : deletingPromotion.discountType === 'monto_fijo' ? `$${deletingPromotion.discountValue.toLocaleString('es-AR')} OFF` : '2x1'} • Días: ${deletingPromotion.dayOfWeek || 'Sábados'}` : undefined} />
+                <ModalPresence show={isNuevoIngresoOpen}><NuevoIngresoModal isOpen={isNuevoIngresoOpen} onClose={() => setIsNuevoIngresoOpen(false)} products={products} categories={categories.map((c) => c.name)} onAddStock={handleAddStock} /></ModalPresence>
+                <ModalPresence show={isCrearStockOpen}><CrearStockModal isOpen={isCrearStockOpen} onClose={handleCloseCrearStock} existingCategoryNames={categories.map((c) => c.name)} onCreateStock={handleCreateStock} /></ModalPresence>
+                <ModalPresence show={isCargarProductoOpen}><CargarProductoModal isOpen={isCargarProductoOpen} onClose={() => { setIsCargarProductoOpen(false); setCargarProductToEdit(null); setProductToReplenish(null); }} products={products} categories={categories.map((c) => c.name)} defaultCategory={categoryForCargar || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos')} onSaveProduct={handleSaveCargarProducto} onSaveBatchProducts={handleSaveBatchProducts} onReplenishProduct={handleReplenishStock} productToEdit={cargarProductToEdit} productToReplenish={productToReplenish} initialMode={cargarModalInitialMode} onCreateCategory={handleCreateCategoryInline} /></ModalPresence>
+                <ModalPresence show={isRegistrarVentaOpen}><RegistrarVentaModal isOpen={isRegistrarVentaOpen} onClose={() => { setIsRegistrarVentaOpen(false); setProductForVenta(null); }} products={products} promotions={promotions} initialProduct={productForVenta} onConfirmSale={handleConfirmSale} /></ModalPresence>
+                <ModalPresence show={Boolean(editingProduct)}><EditarStockModal isOpen={Boolean(editingProduct)} onClose={() => setEditingProduct(null)} product={editingProduct} onSaveProduct={handleSaveProduct} /></ModalPresence>
+                <ModalPresence show={isPromotionModalOpen}><PromocionModal isOpen={isPromotionModalOpen} onClose={() => { setIsPromotionModalOpen(false); setEditingPromotion(null); }} onSave={handleSavePromotion} promotionToEdit={editingPromotion} products={products} /></ModalPresence>
+                <ModalPresence show={isNuevaReservaOpen}><NuevaReservaModal isOpen={isNuevaReservaOpen} onClose={() => { setIsNuevaReservaOpen(false); setProductForReserva(null); }} products={products} onCreateReserva={handleCreateReserva} initialProduct={productForReserva} /></ModalPresence>
+                <ModalPresence show={Boolean(deletingPromotion)}><ConfirmDeleteModal isOpen={Boolean(deletingPromotion)} onClose={() => setDeletingPromotion(null)} onConfirm={handleDeletePromotionConfirm} title="Eliminar Promoción" itemName={deletingPromotion?.title || ''} itemDetail={deletingPromotion ? `Beneficio: ${deletingPromotion.discountType === 'porcentaje' ? `${deletingPromotion.discountValue}% OFF` : deletingPromotion.discountType === 'monto_fijo' ? `$${deletingPromotion.discountValue.toLocaleString('es-AR')} OFF` : '2x1'} • Días: ${deletingPromotion.dayOfWeek || 'Sábados'}` : undefined} /></ModalPresence>
                 {toastMessage && (
                   <div className="fixed bottom-6 right-6 z-50 bg-[#0b1c30] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />

@@ -20,6 +20,7 @@ import {
   User,
 } from 'lucide-react';
 import { ReservaItem, ReservaStatus, ProductItem } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface ReservasViewProps {
   reservas: ReservaItem[];
@@ -45,6 +46,8 @@ export const ReservasView: React.FC<ReservasViewProps> = ({
   onEliminarCaducadas,
   onNavigateToStock,
 }) => {
+  const { user } = useAuth();
+  const businessName = user?.businessName?.trim() || 'tu boutique';
   const handleOpenNewReserva = onOpenNuevaReserva || onOpenCreateReserva || (() => {});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ReservaStatus>('all');
@@ -90,7 +93,7 @@ export const ReservasView: React.FC<ReservasViewProps> = ({
     const cleanPhone = reserva.customerPhone.replace(/\D/g, '');
     const phoneWithCode = cleanPhone.startsWith('54') ? cleanPhone : `549${cleanPhone}`;
     const text = encodeURIComponent(
-      `Hola ${reserva.customerName}! Te saludamos de Aries Indumentaria.\n\nTe recordamos que tu reserva de "${reserva.garmentName}" (Talle ${reserva.size}, ${reserva.colorName}) por un total de $${reserva.totalPrice.toLocaleString('es-AR')} tiene una seña registrada de $${reserva.depositAmount.toLocaleString('es-AR')}.\n\nEl saldo restante a abonar es de $${reserva.pendingBalance.toLocaleString('es-AR')}, con fecha límite de retiro hasta el ${reserva.expiresAt}.\n\n¡Te esperamos en el local!`
+      `Hola ${reserva.customerName}! Te saludamos de ${businessName}.\n\nTe recordamos que tu reserva de "${reserva.garmentName}" (Talle ${reserva.size}, ${reserva.colorName}) por un total de $${reserva.totalPrice.toLocaleString('es-AR')} tiene una seña registrada de $${reserva.depositAmount.toLocaleString('es-AR')}.\n\nEl saldo restante a abonar es de $${reserva.pendingBalance.toLocaleString('es-AR')}, con fecha límite de retiro hasta el ${reserva.expiresAt}.\n\n¡Te esperamos en el local!`
     );
     window.open(`https://wa.me/${phoneWithCode}?text=${text}`, '_blank');
   };

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Printer, X } from 'lucide-react';
 import { ProductItem, ReservaItem, CategorySummary } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface ReporteImprimibleProps {
   products: ProductItem[];
@@ -15,7 +16,9 @@ export const ReporteImprimible: React.FC<ReporteImprimibleProps> = ({
   categories,
   onClose,
 }) => {
+  const { user } = useAuth();
   const hoy = new Date().toLocaleDateString('es-AR');
+  const businessName = user?.businessName?.trim() || 'Stocky';
 
   // Cálculos para los resúmenes
   const stockBajo = products.filter(p => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)).length;
@@ -57,14 +60,14 @@ export const ReporteImprimible: React.FC<ReporteImprimibleProps> = ({
           <div>
             <h1 className="text-2xl font-black uppercase tracking-tight">Resumen y detalle de Stock</h1>
             <div className="mt-4 space-y-1 text-sm">
-              <p><strong>Destinatario:</strong> Melina García</p>
+              <p><strong>Destinatario:</strong> {user?.name || 'Usuario'}</p>
               <p><strong>Fecha de emisión:</strong> {hoy}</p>
               <p><strong>Soporte:</strong> Papel A4</p>
             </div>
           </div>
-          {/* Logo Aries Boutique (Placeholder visual) */}
+          {/* Identificación de la boutique */}
           <div className="w-24 h-24 rounded-full border-4 border-amber-500 bg-[#0b1c30] flex items-center justify-center text-amber-500 font-heading font-bold text-2xl shadow-lg">
-            Aries
+            {businessName}
           </div>
         </div>
 

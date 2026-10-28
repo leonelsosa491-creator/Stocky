@@ -17,6 +17,7 @@ const mapDbToMovement = (row: any): StockMovement => ({
   type: row.tipo,
   quantity: Number(row.cantidad),
   user: row.usuario || '',
+  userId: row.usuario_id || undefined,
   sourceOrDestination: row.origen_destino || '',
   notes: row.notas || '',
 });
@@ -200,13 +201,19 @@ export const deletePromociones = (boutiqueId: string, ids: string[]) => deleteTa
 export const deleteProveedores = (boutiqueId: string, ids: string[]) => deleteTabla('proveedores', boutiqueId, ids);
 
 export const vaciarTablasBoutique = async (boutiqueId: string) => {
-  const tablas = ['movimientos', 'reservas', 'promociones', 'proveedores', 'productos'];
-  await Promise.all(
-    tablas.map(async (tabla) => {
-      const { error } = await supabase.from(tabla).delete().eq('boutique_id', boutiqueId);
-      logError(`vaciar ${tabla}`, error);
-    })
-  );
+  try {
+    // Borramos todo en orden (ahora incluimos las categorías)
+    await supabase.from('productos').delete().eq('boutique_id', boutiqueId);
+    await supabase.from('categorias').delete().eq('boutique_id', boutiqueId);
+    await supabase.from('movimientos').delete().eq('boutique_id', boutiqueId);
+    await supabase.from('reservas').delete().eq('boutique_id', boutiqueId);
+    await supabase.from('promociones').delete().eq('boutique_id', boutiqueId);
+    await supabase.from('proveedores').delete().eq('boutique_id', boutiqueId);
+    return true;
+  } catch (error) {
+    console.error("Error vaciando tablas:", error);
+    return false;
+  }
 };
 
 // Ventas y reservas: descuento atómico vía RPC (la vendedora no puede escribir productos directamente)

@@ -156,10 +156,7 @@ export const EditarStockModal: React.FC<EditarStockModalProps> = ({
                 className="w-full text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
                 Stock Físico Actual
               </label>
@@ -167,8 +164,8 @@ export const EditarStockModal: React.FC<EditarStockModalProps> = ({
                 type="number"
                 min="0"
                 required
-                value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
+                value={formData.stock === 0 ? '' : formData.stock}
+                onChange={(e) => setFormData({ ...formData, stock: e.target.value === '' ? 0 : Number(e.target.value) })}
                 className="w-full text-sm font-bold text-[#42308f] px-3 py-2 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
               />
             </div>
@@ -180,9 +177,9 @@ export const EditarStockModal: React.FC<EditarStockModalProps> = ({
                 type="number"
                 min="1"
                 required
-                value={formData.minStockThreshold}
+                value={formData.minStockThreshold === 0 ? '' : formData.minStockThreshold}
                 onChange={(e) =>
-                  setFormData({ ...formData, minStockThreshold: Number(e.target.value) })
+                  setFormData({ ...formData, minStockThreshold: e.target.value === '' ? 0 : Number(e.target.value) })
                 }
                 className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
               />

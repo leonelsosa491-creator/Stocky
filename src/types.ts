@@ -55,6 +55,7 @@ export interface StockMovement {
   user: string;
   sourceOrDestination: string;
   notes: string;
+  userId?: string;
 }
 
 export type PromotionStatus = 'activa' | 'programada' | 'pausada' | 'expirada';

@@ -184,8 +184,8 @@ export const NuevoIngresoModal: React.FC<NuevoIngresoModalProps> = ({
                 type="number"
                 min="1"
                 required
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
+                value={quantity === 0 ? '' : quantity}
+                onChange={(e) => setQuantity(e.target.value === '' ? 0 : Number(e.target.value))}
                 className="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none font-bold text-[#42308f]"
               />
             </div>

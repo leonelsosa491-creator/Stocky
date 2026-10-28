@@ -351,6 +351,7 @@ export const NuevaReservaModal: React.FC<NuevaReservaModalProps> = ({
                       type="number"
                       min="100"
                       max={maxDepositAllowed}
+                      step="0.01"
                       value={depositInput}
                       onChange={(e) => {
                         setDepositInput(e.target.value);

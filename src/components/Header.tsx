@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -7,12 +7,8 @@ import {
   ChevronDown,
   LogOut,
   Settings,
-  ShieldCheck,
-  Code,
-  KeyRound,
   TrendingUp,
   Terminal,
-  Store,
   Moon,
   Sun
 } from 'lucide-react';
@@ -46,19 +42,56 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  
+
+  // Contenedores de cada desplegable: sirven para detectar clics "afuera"
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
   // Estado para el modo oscuro global
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const userName = user?.name || 'Melina Gomez';
-  const userRole = role || 'admin';
-  const userAvatar = user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80';
+  const userName = user?.name || 'Usuario';
+  const userRole: Role = role || 'vendedora';
+  const userAvatar = user?.avatar || '';
+  const userInitial = userName.trim().charAt(0).toUpperCase() || 'U';
 
   const roleLabels: Record<Role, { label: string; badgeClass: string }> = {
     developer: { label: 'SuperAdmin (Dev)', badgeClass: 'bg-rose-100 text-rose-800 border-rose-300' },
     admin: { label: 'Administrador', badgeClass: 'bg-purple-100 text-[#42308f] border-purple-300' },
     vendedora: { label: 'Vendedora', badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   };
+
+  // Cierra los desplegables al tocar cualquier parte de la pantalla fuera de ellos,
+  // o al apretar la tecla Escape.
+  useEffect(() => {
+    if (!showNotifications && !showUserDropdown) return;
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (showNotifications && notificationsRef.current && !notificationsRef.current.contains(target)) {
+        setShowNotifications(false);
+      }
+      if (showUserDropdown && userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowNotifications(false);
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showNotifications, showUserDropdown]);
 
   const handleLogout = async () => {
     setShowUserDropdown(false);
@@ -79,9 +112,11 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-[#5a49a8] text-white flex items-center justify-center text-sm font-bold">
-            A
+            {user?.businessName?.trim().charAt(0).toUpperCase() || 'S'}
           </div>
-          <span className="font-heading font-bold text-[#42308f] text-base">Aries</span>
+          <span className="font-heading font-bold text-[#42308f] text-base">
+            {user?.businessName || 'Stocky'}
+          </span>
         </div>
       </div>
 
@@ -123,12 +158,14 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notificationsRef}>
           <button
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowUserDropdown(false);
             }}
+            aria-expanded={showNotifications}
+            aria-haspopup="true"
             className="p-2 text-[#484552] hover:text-[#42308f] hover:bg-white rounded-full transition-colors relative cursor-pointer"
             title="Notificaciones de stock"
           >
@@ -167,21 +204,27 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="h-6 w-px bg-[#c9c4d3]/50 hidden sm:block"></div>
 
         {/* User Account Dropdown */}
-        <div className="relative">
+        <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => {
               setShowUserDropdown(!showUserDropdown);
               setShowNotifications(false);
             }}
+            aria-expanded={showUserDropdown}
+            aria-haspopup="true"
             className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-full hover:bg-white text-[#0b1c30] transition-colors border border-transparent hover:border-[#c9c4d3]/40 cursor-pointer"
           >
             <div className="w-8 h-8 rounded-full bg-[#5a49a8] overflow-hidden flex items-center justify-center text-white ring-2 ring-[#5a49a8]/20 shrink-0">
-              <img
-                src={userAvatar}
-                alt={userName}
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-sm font-bold">{userInitial}</span>
+              )}
             </div>
             <div className="hidden lg:flex flex-col text-left">
               <span className="font-heading font-bold text-xs text-[#0b1c30] leading-tight">

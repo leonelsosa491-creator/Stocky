@@ -60,7 +60,7 @@ import { ReportesVentasView } from './components/ReportesVentasView';
 import { ConfiguracionSistemaView } from './components/ConfiguracionSistemaView';
 import { CheckCircle2 } from 'lucide-react';
 
-// Traductores entre Supabase (snake_case) y TypeScript (camelCase)
+// Traductores
 const mapDbToProduct = (row: any): ProductItem => ({
   sku: row.sku,
   name: row.name,
@@ -121,7 +121,7 @@ export default function App() {
     return 'resumen';
   }, [location.pathname]);
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('Buzos');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -137,34 +137,53 @@ export default function App() {
   const [users, setUsers] = useState<AppUser[]>(() => initialData.users);
   const [currentUser, setCurrentUser] = useState<AppUser>(() => initialData.currentUser);
 
-  // Sincronizar usuario activo
   useEffect(() => {
-    if (user) {
-      setCurrentUser(user);
-    }
+    if (user) setCurrentUser(user);
   }, [user]);
 
-  // Cargar productos de Supabase al iniciar la app
+  // Cargar productos y categorías oficiales desde Supabase
   useEffect(() => {
-    const fetchProductosFromSupabase = async () => {
-      const { data, error } = await supabase
+    const fetchCoreData = async () => {
+      if (!boutiqueId) return;
+
+      // 1. Traer Productos (Filtrados por cuenta)
+      const { data: prodData, error: prodError } = await supabase
         .from('productos')
         .select('*')
+        .eq('boutique_id', boutiqueId) // 🔒 FILTRO DE SEGURIDAD
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error al cargar productos de Supabase:', error.message);
-        return;
-      }
+      if (prodError) console.error('Error cargando productos:', prodError.message);
+      const productosDescargados = (prodData || []).map(mapDbToProduct);
+      setProducts(productosDescargados);
 
-      setProducts((data || []).map(mapDbToProduct));
+      // 2. Traer Categorías (Filtradas por cuenta)
+      const { data: catData, error: catError } = await supabase
+        .from('categorias')
+        .select('*')
+        .eq('boutique_id', boutiqueId) // 🔒 FILTRO DE SEGURIDAD
+        .order('name', { ascending: true });
+
+      if (catError) console.error('Error cargando categorias:', catError.message);
+      
+      const categoriasBD: CategorySummary[] = (catData || []).map((c: any) => ({
+        name: c.name,
+        totalItems: 0,
+        inStock: 0,
+        lowStock: 0,
+        outOfStock: 0,
+        actionType: 'detalles',
+        icon: c.icon || 'tshirt',
+        description: c.description || `Colección de ${c.name}`,
+        facilityDefault: c.facility_default || 'Depósito Central',
+      }));
+
+      setCategoriesBase(categoriasBD);
     };
 
-    if (boutiqueId) fetchProductosFromSupabase();
+    fetchCoreData();
   }, [boutiqueId]);
 
-  // Cargar movimientos, reservas, promociones y proveedores de la boutique (RLS filtra por boutique_id).
-  // Si una tabla no se puede leer (migración sin correr), se conserva la copia local.
   useEffect(() => {
     if (!boutiqueId) return;
     let cancelado = false;
@@ -186,27 +205,63 @@ export default function App() {
     if (boutiqueId) upsertMovimientos(boutiqueId, nuevos);
   };
 
-  // Funciones auxiliares de sincronización con Supabase
-  const syncProductToSupabase = async (prod: ProductItem) => {
-    if (!boutiqueId) return;
-    const { error } = await supabase
+  const syncProductToSupabase = async (prod: ProductItem): Promise<ProductItem | null> => {
+    if (!boutiqueId) return null;
+    const { sku, ...restoDelObjeto } = mapProductToDb(prod, boutiqueId);
+    const dbObj = sku ? { sku, ...restoDelObjeto } : restoDelObjeto; 
+
+    const { data, error } = await supabase
       .from('productos')
-      .upsert(mapProductToDb(prod, boutiqueId), { onConflict: 'boutique_id,sku' });
-    if (error) console.error('Error guardando en Supabase:', error.message);
+      .upsert(dbObj, { onConflict: 'boutique_id,sku' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error guardando en Supabase:', error.message);
+      return null;
+    }
+    return data ? mapDbToProduct(data) : null;
   };
 
-  const syncBatchProductsToSupabase = async (batch: ProductItem[]) => {
-    if (!boutiqueId || batch.length === 0) return;
-    const { error } = await supabase
+  const syncBatchProductsToSupabase = async (batch: ProductItem[]): Promise<ProductItem[]> => {
+    if (!boutiqueId || batch.length === 0) return [];
+    const dbObjs = batch.map((p) => {
+      const { sku, ...restoDelObjeto } = mapProductToDb(p, boutiqueId);
+      return sku ? { sku, ...restoDelObjeto } : restoDelObjeto;
+    });
+
+    const { data, error } = await supabase
       .from('productos')
-      .upsert(batch.map((p) => mapProductToDb(p, boutiqueId)), { onConflict: 'boutique_id,sku' });
-    if (error) console.error('Error guardando lote en Supabase:', error.message);
+      .upsert(dbObjs, { onConflict: 'boutique_id,sku' })
+      .select();
+
+    if (error) {
+      console.error('Error guardando lote en Supabase:', error.message);
+      return [];
+    }
+    return data ? data.map(mapDbToProduct) : [];
   };
 
   const deleteProductFromSupabase = async (sku: string) => {
     if (!boutiqueId) return;
     const { error } = await supabase.from('productos').delete().eq('boutique_id', boutiqueId).eq('sku', sku);
     if (error) console.error('Error eliminando en Supabase:', error.message);
+  };
+
+  const handleRenameCategory = async (oldName: string, newName: string) => {
+    await supabase.from('productos').update({ category: newName }).eq('category', oldName);
+    await supabase.from('categorias').update({ name: newName }).eq('name', oldName);
+    setProducts((prev) => prev.map((prod) => prod.category === oldName ? { ...prod, category: newName } : prod));
+    setCategoriesBase((prev) => prev.map((cat) => cat.name === oldName ? { ...cat, name: newName } : cat));
+    showToast(`La colección "${oldName}" ahora se llama "${newName}"`);
+  };
+
+  const handleDeleteCategory = async (categoryName: string) => {
+    await supabase.from('productos').delete().eq('category', categoryName);
+    await supabase.from('categorias').delete().eq('name', categoryName);
+    setProducts((prev) => prev.filter((prod) => prod.category !== categoryName));
+    setCategoriesBase((prev) => prev.filter((cat) => cat.name !== categoryName));
+    showToast(`Se eliminó permanentemente la colección "${categoryName}"`);
   };
 
   useEffect(() => { safeSet(STORAGE_KEYS.PRODUCTS, products); }, [products]);
@@ -220,25 +275,13 @@ export default function App() {
 
   const categories: CategorySummary[] = useMemo(() => {
     const baseMap = new Map<string, CategorySummary>(categoriesBase.map((c) => [c.name.toLowerCase(), c]));
-    const allNames = Array.from(
-      new Set([
-        ...categoriesBase.map((c) => c.name),
-        ...products.map((p) => p.category).filter(Boolean),
-      ])
-    );
-
-    return allNames.map((name) => {
-      const base = baseMap.get(name.toLowerCase());
-      const catProducts = products.filter(
-        (p) => p.category.toLowerCase() === name.toLowerCase()
-      );
+    
+    return categoriesBase.map((base) => {
+      const name = base.name;
+      const catProducts = products.filter((p) => p.category.toLowerCase() === name.toLowerCase());
       const totalUnits = catProducts.reduce((sum, p) => sum + p.stock, 0);
-      const lowStockCount = catProducts.filter(
-        (p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)
-      ).length;
-      const outOfStockCount = catProducts.filter(
-        (p) => p.status === 'agotado' || p.stock === 0
-      ).length;
+      const lowStockCount = catProducts.filter((p) => p.status === 'bajo' || (p.stock > 0 && p.stock <= p.minStockThreshold)).length;
+      const outOfStockCount = catProducts.filter((p) => p.status === 'agotado' || p.stock === 0).length;
 
       return {
         name,
@@ -247,9 +290,9 @@ export default function App() {
         lowStock: lowStockCount,
         outOfStock: outOfStockCount,
         actionType: outOfStockCount > 0 ? 'revisar' : 'detalles',
-        icon: base?.icon || 'tshirt',
-        description: base?.description || `Colección de ${name}`,
-        facilityDefault: base?.facilityDefault || 'Depósito Central',
+        icon: base.icon || 'tshirt',
+        description: base.description || `Colección de ${name}`,
+        facilityDefault: base.facilityDefault || 'Depósito Central',
       };
     });
   }, [categoriesBase, products]);
@@ -278,14 +321,37 @@ export default function App() {
   };
 
   const handleOpenRegistrarVenta = (product?: ProductItem) => {
+    if (products.length === 0) {
+      showToast('⚠️ No hay prendas en el inventario para registrar ventas.');
+      return;
+    }
     setProductForVenta(product || null);
     setIsRegistrarVentaOpen(true);
   };
 
   const handleOpenNuevaReserva = (product?: ProductItem) => {
+    if (products.length === 0) {
+      showToast('⚠️ No hay prendas en el inventario para reservar.');
+      return;
+    }
     setProductForReserva(product || null);
     setIsNuevaReservaOpen(true);
   };
+
+  const handleOpenCargarProducto = (category?: string, productToEdit?: ProductItem | null, initialMode: 'reponer' | 'nuevo' = 'reponer', itemToReplenish?: ProductItem | null) => {
+    if (categoriesBase.length === 0) {
+      showToast('⚠️ Aún debes crear tu stock (botón "+ Nuevo") para cargar prendas.');
+      return;
+    }
+    const cat = category || (selectedCategory !== 'Todas' ? selectedCategory : categoriesBase[0]?.name || 'General');
+    setCategoryForCargar(cat);
+    setCargarProductToEdit(productToEdit || null);
+    setProductToReplenish(itemToReplenish || null);
+    setCargarModalInitialMode(initialMode);
+    setIsCargarProductoOpen(true);
+  };
+
+  const handleOpenCrearStock = () => setIsCrearStockOpen(true);
 
   const handleSelectCategory = (categoryName: string) => {
     setSelectedCategory(categoryName);
@@ -293,23 +359,16 @@ export default function App() {
     navigate('/stock');
   };
 
-  const handleNavigateToStockWithStatus = (
-    filter: 'all' | 'bajo' | 'agotado' | 'ok' = 'bajo',
-    categoryName: string = 'Todas'
-  ) => {
+  const handleNavigateToStockWithStatus = (filter: 'all' | 'bajo' | 'agotado' | 'ok' = 'bajo', categoryName: string = 'Todas') => {
     setSelectedCategory(categoryName);
     setStockStatusFilter(filter);
     navigate('/stock');
-    if (filter === 'bajo') {
-      showToast('Mostrando prendas con stock bajo');
-    } else if (filter === 'agotado') {
-      showToast('Mostrando prendas agotadas');
-    }
   };
 
   const getMovementDateInfo = () => {
     const now = new Date();
-    const rawDate = now.toISOString().split('T')[0];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const rawDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const timeStr = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     return { date: `Hoy, ${timeStr}`, rawDate };
   };
@@ -400,106 +459,117 @@ export default function App() {
     showToast(`Stock actualizado para ${updated.sku}`);
   };
 
-  const handleUpdateProductStock = (sku: string, newStock: number) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.sku === sku) {
-          const safeStock = Math.max(0, newStock);
-          let status: ProductItem['status'] = 'ok';
-          if (safeStock === 0) status = 'agotado';
-          else if (safeStock <= p.minStockThreshold) status = 'bajo';
-          const updated = { ...p, stock: safeStock, status };
-          syncProductToSupabase(updated);
-          return updated;
-        }
-        return p;
-      })
-    );
-  };
-
-  const handleExport = () => {
-    const headers = ['SKU', 'Producto', 'Categoría', 'Talle', 'Color', 'Temporada', 'Stock', 'Ubicación', 'Estado'];
-    const rows = products.map((p) => [
-      p.sku, `"${p.name}"`, p.category, p.size, p.colorName, p.season, p.stock, `"${p.locationFacility} ${p.locationDetails}"`, p.status,
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Inventario_Aries_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('Archivo CSV exportado exitosamente');
-  };
-
-  const handleSavePromotion = (promo: Promotion) => {
-    const exists = promotions.some((p) => p.id === promo.id);
-    if (boutiqueId) upsertPromociones(boutiqueId, [promo]);
-    if (exists) {
-      setPromotions((prev) => prev.map((p) => (p.id === promo.id ? promo : p)));
-      showToast(`Promoción "${promo.title}" modificada con éxito`);
-    } else {
-      setPromotions((prev) => [promo, ...prev]);
-      showToast(`Promoción "${promo.title}" creada con éxito`);
+  const handleCreateStock = async (newCat: CategorySummary, initialProduct?: ProductItem) => {
+    if (boutiqueId) {
+      await supabase.from('categorias').upsert({
+        boutique_id: boutiqueId,
+        name: newCat.name,
+        icon: newCat.icon,
+        description: newCat.description,
+        facility_default: newCat.facilityDefault
+      });
     }
-  };
 
-  const handleDeletePromotionConfirm = () => {
-    if (!deletingPromotion) return;
-    const title = deletingPromotion.title;
-    const promoId = deletingPromotion.id;
-    setPromotions((prev) => prev.filter((p) => p.id !== promoId));
-    if (boutiqueId) deletePromociones(boutiqueId, [promoId]);
-    showToast(`Promoción "${title}" eliminada del sistema`);
-    setDeletingPromotion(null);
-  };
-
-  const handleTogglePromotionStatus = (promoId: string) => {
-    const target = promotions.find((p) => p.id === promoId);
-    if (!target) return;
-    const newStatus: Promotion['status'] = target.status === 'activa' ? 'pausada' : 'activa';
-    const updated: Promotion = { ...target, status: newStatus };
-    setPromotions((prev) => prev.map((p) => (p.id === promoId ? updated : p)));
-    if (boutiqueId) upsertPromociones(boutiqueId, [updated]);
-    showToast(`Promoción "${target.title}" ahora está ${newStatus}`);
-  };
-
-  const handleOpenCrearStock = () => setIsCrearStockOpen(true);
-
-  const handleCreateStock = (newCat: CategorySummary, initialProduct?: ProductItem) => {
     setCategoriesBase((prev) => [...prev, newCat]);
+    
     if (initialProduct) {
-      setProducts((prev) => [initialProduct, ...prev]);
-      syncProductToSupabase(initialProduct);
+      const savedProd = await syncProductToSupabase(initialProduct);
+      if (savedProd) {
+        setProducts((prev) => [savedProd, ...prev]);
 
-      const dateInfo = getMovementDateInfo();
-      const newMovement: StockMovement = {
-        id: `MOV-${generarSufijoId()}`,
-        date: dateInfo.date,
-        rawDate: dateInfo.rawDate,
-        sku: initialProduct.sku,
-        productName: initialProduct.name,
-        type: 'ingreso',
-        quantity: initialProduct.stock,
-        user: currentUser.name,
-        sourceOrDestination: initialProduct.locationFacility,
-        notes: `Carga inicial de stock para ${newCat.name}`,
-      };
-      registrarMovimientos([newMovement]);
+        const dateInfo = getMovementDateInfo();
+        const newMovement: StockMovement = {
+          id: `MOV-${generarSufijoId()}`,
+          date: dateInfo.date,
+          rawDate: dateInfo.rawDate,
+          sku: savedProd.sku,
+          productName: savedProd.name,
+          type: 'ingreso',
+          quantity: savedProd.stock,
+          user: currentUser.name,
+          sourceOrDestination: savedProd.locationFacility,
+          notes: `Carga inicial de stock para ${newCat.name}`,
+        };
+        registrarMovimientos([newMovement]);
+      }
     }
     setSelectedCategory(newCat.name);
     navigate('/stock');
     showToast(`Stock de "${newCat.name}" creado con éxito`);
   };
 
-  const handleOpenCargarProducto = (category?: string, productToEdit?: ProductItem | null, initialMode: 'reponer' | 'nuevo' = 'reponer', itemToReplenish?: ProductItem | null) => {
-    const cat = category || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos');
-    setCategoryForCargar(cat);
-    setCargarProductToEdit(productToEdit || null);
-    setProductToReplenish(itemToReplenish || null);
-    setCargarModalInitialMode(initialMode);
-    setIsCargarProductoOpen(true);
+  const handleCreateCategoryInline = async (catName: string) => {
+    const exists = categoriesBase.some((c) => c.name.toLowerCase() === catName.toLowerCase());
+    if (!exists && boutiqueId) {
+      await supabase.from('categorias').upsert({
+        boutique_id: boutiqueId,
+        name: catName,
+        icon: 'tshirt',
+        description: `Colección de ${catName}`,
+        facility_default: 'Depósito Central'
+      });
+      setCategoriesBase((prev) => [...prev, { name: catName, totalItems: 0, inStock: 0, lowStock: 0, outOfStock: 0, actionType: 'detalles', icon: 'tshirt', description: `Colección de ${catName}`, facilityDefault: 'Depósito Central' }]);
+    }
+  };
+
+  const handleSaveCargarProducto = async (prod: ProductItem) => {
+    const isNew = !prod.sku;
+    const savedProd = await syncProductToSupabase(prod);
+
+    if (!savedProd) {
+      showToast('❌ Error al guardar la prenda.');
+      return;
+    }
+
+    if (isNew) {
+      setProducts((prev) => [savedProd, ...prev]);
+      const dateInfo = getMovementDateInfo();
+      const newMovement: StockMovement = {
+        id: `MOV-${generarSufijoId()}`,
+        date: dateInfo.date,
+        rawDate: dateInfo.rawDate,
+        sku: savedProd.sku,
+        productName: savedProd.name,
+        type: 'ingreso',
+        quantity: savedProd.stock,
+        user: currentUser.name,
+        sourceOrDestination: savedProd.locationFacility,
+        notes: `Carga directa a stock de ${savedProd.category}`,
+      };
+      registrarMovimientos([newMovement]);
+      showToast(`Prenda "${savedProd.name}" cargada al stock de ${savedProd.category}`);
+    } else {
+      setProducts((prev) => prev.map((p) => (p.sku === savedProd.sku || p.sku === prod.sku ? savedProd : p)));
+      showToast(`Prenda "${savedProd.name}" (${savedProd.sku}) actualizada`);
+    }
+  };
+
+  const handleSaveBatchProducts = async (batch: ProductItem[]) => {
+    const savedBatch = await syncBatchProductsToSupabase(batch);
+
+    if (savedBatch.length > 0) {
+      setProducts((prev) => [...savedBatch, ...prev]);
+
+      const totalQty = savedBatch.reduce((sum, p) => sum + p.stock, 0);
+      const firstCat = savedBatch[0].category;
+      const dateInfo = getMovementDateInfo();
+      const newMovement: StockMovement = {
+        id: `MOV-${generarSufijoId()}`,
+        date: dateInfo.date,
+        rawDate: dateInfo.rawDate,
+        sku: savedBatch.map((b) => b.sku).join(', '),
+        productName: `${savedBatch[0].name.split('(')[0].trim()} (Curva ${savedBatch.length} talles)`,
+        type: 'ingreso',
+        quantity: totalQty,
+        user: currentUser.name,
+        sourceOrDestination: savedBatch[0].locationFacility,
+        notes: `Carga de curva de talles para ${firstCat}`,
+      };
+      registrarMovimientos([newMovement]);
+      showToast(`${savedBatch.length} variantes (${totalQty} unidades) cargadas al stock`);
+    } else {
+      showToast('❌ Error al guardar la curva de talles.');
+    }
   };
 
   const handleQuickReplenish = (product: ProductItem) => {
@@ -538,61 +608,70 @@ export default function App() {
     showToast(`+${data.quantity} unidades ingresadas a ${data.productName} (${data.sku})`);
   };
 
-  const handleSaveBatchProducts = (batch: ProductItem[]) => {
-    setProducts((prev) => [...batch, ...prev]);
-    syncBatchProductsToSupabase(batch);
-
-    const totalQty = batch.reduce((sum, p) => sum + p.stock, 0);
-    const firstCat = batch[0].category;
-    const dateInfo = getMovementDateInfo();
-    const newMovement: StockMovement = {
-      id: `MOV-${generarSufijoId()}`,
-      date: dateInfo.date,
-      rawDate: dateInfo.rawDate,
-      sku: batch.map((b) => b.sku).join(', '),
-      productName: `${batch[0].name.split('(')[0].trim()} (Curva ${batch.length} talles)`,
-      type: 'ingreso',
-      quantity: totalQty,
-      user: currentUser.name,
-      sourceOrDestination: batch[0].locationFacility,
-      notes: `Carga de curva de talles para ${firstCat}`,
-    };
-    registrarMovimientos([newMovement]);
-    showToast(`${batch.length} variantes (${totalQty} unidades) cargadas al stock`);
+  const handleUpdateProductStock = (sku: string, newStock: number) => {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.sku === sku) {
+          const safeStock = Math.max(0, newStock);
+          let status: ProductItem['status'] = 'ok';
+          if (safeStock === 0) status = 'agotado';
+          else if (safeStock <= p.minStockThreshold) status = 'bajo';
+          const updated = { ...p, stock: safeStock, status };
+          syncProductToSupabase(updated);
+          return updated;
+        }
+        return p;
+      })
+    );
   };
 
-  const handleCreateCategoryInline = (catName: string) => {
-    const exists = categories.some((c) => c.name.toLowerCase() === catName.toLowerCase());
-    if (!exists) {
-      setCategoriesBase((prev) => [...prev, { name: catName, totalItems: 0, inStock: 0, lowStock: 0, outOfStock: 0, actionType: 'detalles', icon: 'tshirt', description: `Colección de ${catName}`, facilityDefault: 'Depósito Central' }]);
-    }
+  const handleExport = () => {
+    const headers = ['SKU', 'Producto', 'Categoría', 'Talle', 'Color', 'Temporada', 'Stock', 'Ubicación', 'Estado'];
+    const rows = products.map((p) => [
+      p.sku, `"${p.name}"`, p.category, p.size, p.colorName, p.season, p.stock, `"${p.locationFacility} ${p.locationDetails}"`, p.status,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    const businessNameForFile = (user?.businessName?.trim() || 'Stocky').replace(/[<>:"/\\|?*]/g, '_');
+    link.setAttribute('download', `Inventario_${businessNameForFile}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Archivo CSV exportado exitosamente');
   };
 
-  const handleSaveCargarProducto = (prod: ProductItem) => {
-    const existingIndex = products.findIndex((p) => p.sku === prod.sku);
-    syncProductToSupabase(prod);
-
-    if (existingIndex >= 0) {
-      setProducts((prev) => prev.map((p) => (p.sku === prod.sku ? prod : p)));
-      showToast(`Prenda "${prod.name}" (${prod.sku}) actualizada`);
+  const handleSavePromotion = (promo: Promotion) => {
+    const exists = promotions.some((p) => p.id === promo.id);
+    if (boutiqueId) upsertPromociones(boutiqueId, [promo]);
+    if (exists) {
+      setPromotions((prev) => prev.map((p) => (p.id === promo.id ? promo : p)));
+      showToast(`Promoción "${promo.title}" modificada con éxito`);
     } else {
-      setProducts((prev) => [prod, ...prev]);
-      const dateInfo = getMovementDateInfo();
-      const newMovement: StockMovement = {
-        id: `MOV-${generarSufijoId()}`,
-        date: dateInfo.date,
-        rawDate: dateInfo.rawDate,
-        sku: prod.sku,
-        productName: prod.name,
-        type: 'ingreso',
-        quantity: prod.stock,
-        user: currentUser.name,
-        sourceOrDestination: prod.locationFacility,
-        notes: `Carga directa a stock de ${prod.category}`,
-      };
-      registrarMovimientos([newMovement]);
-      showToast(`Prenda "${prod.name}" cargada al stock de ${prod.category}`);
+      setPromotions((prev) => [promo, ...prev]);
+      showToast(`Promoción "${promo.title}" creada con éxito`);
     }
+  };
+
+  const handleDeletePromotionConfirm = () => {
+    if (!deletingPromotion) return;
+    const title = deletingPromotion.title;
+    const promoId = deletingPromotion.id;
+    setPromotions((prev) => prev.filter((p) => p.id !== promoId));
+    if (boutiqueId) deletePromociones(boutiqueId, [promoId]);
+    showToast(`Promoción "${title}" eliminada del sistema`);
+    setDeletingPromotion(null);
+  };
+
+  const handleTogglePromotionStatus = (promoId: string) => {
+    const target = promotions.find((p) => p.id === promoId);
+    if (!target) return;
+    const newStatus: Promotion['status'] = target.status === 'activa' ? 'pausada' : 'activa';
+    const updated: Promotion = { ...target, status: newStatus };
+    setPromotions((prev) => prev.map((p) => (p.id === promoId ? updated : p)));
+    if (boutiqueId) upsertPromociones(boutiqueId, [updated]);
+    showToast(`Promoción "${target.title}" ahora está ${newStatus}`);
   };
 
   const handleConfirmSale = (saleData: any) => {
@@ -764,18 +843,21 @@ export default function App() {
 
   const handleClearAllTestData = async () => {
     clearAllStoredData();
-    setProducts([]); setMovements([]); setReservas([]); setPromotions([]); setSuppliers([]);
-    setEditingProduct(null); setProductForVenta(null); setProductForReserva(null);
-    if (boutiqueId) await vaciarTablasBoutique(boutiqueId);
-    showToast('Se eliminaron todas las prendas, stock, movimientos, reservas, promociones y proveedores.');
-  };
-
-  const handleRestoreTestData = async () => {
-    restoreAllDemoData();
-    setProducts(INITIAL_PRODUCTS); setMovements(INITIAL_MOVEMENTS); setReservas(INITIAL_RESERVAS); setPromotions(INITIAL_PROMOTIONS); setSuppliers(INITIAL_SUPPLIERS); setCategoriesBase(INITIAL_CATEGORIES);
-    setSelectedCategory('Buzos');
-    await syncBatchProductsToSupabase(INITIAL_PRODUCTS);
-    showToast('¡Datos de prueba iniciales restaurados con éxito!');
+    setProducts([]); 
+    setCategoriesBase([]); 
+    setSelectedCategory('Todas'); // 👉 ¡Agregá esta línea!
+    setMovements([]); 
+    setReservas([]); 
+    setPromotions([]); 
+    setSuppliers([]);
+    setEditingProduct(null); 
+    setProductForVenta(null); 
+    setProductForReserva(null);
+    
+    if (boutiqueId) {
+      await vaciarTablasBoutique(boutiqueId);
+    }
+    showToast('Base de datos vaciada: Se eliminaron prendas, categorías, movimientos y reservas.');
   };
 
   return (
@@ -838,16 +920,38 @@ export default function App() {
             <Route element={<RoleRoute allowedRoles={['developer', 'admin', 'vendedora']} />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<ResumenView categories={categories} products={products} movements={movements} onSelectCategory={handleSelectCategory} onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)} onOpenCrearStock={handleOpenCrearStock} onOpenRegistrarVenta={() => handleOpenRegistrarVenta()} onNavigateToLowStock={() => handleNavigateToStockWithStatus('bajo', 'Todas')} onNavigateToOutOfStock={() => handleNavigateToStockWithStatus('agotado', 'Todas')} onSelectCategoryWithFilter={(catName, filter) => handleNavigateToStockWithStatus(filter, catName)} onExport={handleExport} />} />
-              <Route path="/stock" element={<StockDetailView products={products} categories={categories} selectedCategory={selectedCategory} promotions={promotions} initialStatusFilter={stockStatusFilter} onStatusFilterChange={setStockStatusFilter} onNavigateToCategory={(cat) => setSelectedCategory(cat)} onNavigateToResumen={() => navigate('/dashboard')} onOpenCrearStock={handleOpenCrearStock} onOpenCargarProducto={(cat, prod, mode) => handleOpenCargarProducto(cat, prod, mode || 'reponer')} onQuickReplenish={handleQuickReplenish} onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)} onOpenReserva={handleOpenNuevaReserva} onEditStock={(p) => { if (p) { handleOpenCargarProducto(p.category, p, 'nuevo'); } else { handleOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : 'Buzos', null, 'reponer'); } }} onExport={handleExport} onUpdateProductStock={handleUpdateProductStock} onDeleteProduct={handleDeleteProduct} />} />
+              <Route path="/stock" element={
+                <StockDetailView 
+                  products={products} 
+                  categories={categories} 
+                  selectedCategory={selectedCategory} 
+                  promotions={promotions} 
+                  initialStatusFilter={stockStatusFilter} 
+                  onStatusFilterChange={setStockStatusFilter} 
+                  onNavigateToCategory={(cat) => setSelectedCategory(cat)} 
+                  onNavigateToResumen={() => navigate('/dashboard')} 
+                  onOpenCrearStock={handleOpenCrearStock} 
+                  onOpenCargarProducto={(cat, prod, mode) => handleOpenCargarProducto(cat, prod, mode || 'reponer')} 
+                  onQuickReplenish={handleQuickReplenish} 
+                  onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)} 
+                  onOpenReserva={handleOpenNuevaReserva} 
+                  onEditStock={(p) => { if (p) { handleOpenCargarProducto(p.category, p, 'nuevo'); } else { handleOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : 'Buzos', null, 'reponer'); } }} 
+                  onExport={handleExport} 
+                  onUpdateProductStock={handleUpdateProductStock} 
+                  onDeleteProduct={handleDeleteProduct} 
+                  onRenameCategory={handleRenameCategory}
+                  onDeleteCategory={handleDeleteCategory}
+                />
+              } />
               <Route path="/productos" element={<ProductosView products={products} onSelectProduct={(p) => { setSelectedCategory(p.category); setEditingProduct(p); navigate('/stock'); }} onOpenNuevoIngreso={() => setIsNuevoIngresoOpen(true)} onOpenRegistrarVenta={(prod) => handleOpenRegistrarVenta(prod)} onDeleteProduct={handleDeleteProduct} />} />
               <Route path="/movimientos" element={<MovimientosView movements={movements} />} />
               <Route path="/reservas" element={<ReservasView reservas={reservas} products={products} onOpenNuevaReserva={() => handleOpenNuevaReserva()} onMarcarRetirada={handleMarkReservaRetired} onEliminarReserva={handleDeleteReserva} onEliminarCaducadas={handleClearCaducadas} onNavigateToStock={() => navigate('/stock')} />} />
               <Route path="/promociones" element={<PromocionesView promotions={promotions} products={products} onCreatePromotion={() => { setEditingPromotion(null); setIsPromotionModalOpen(true); }} onEditPromotion={(promo) => { setEditingPromotion(promo); setIsPromotionModalOpen(true); }} onDeletePromotion={(promo) => setDeletingPromotion(promo)} onToggleStatus={handleTogglePromotionStatus} onNavigateToStock={() => navigate('/stock')} onSelectProductForStock={(category, sku) => { if (category && category !== 'Todas') { setSelectedCategory(category); } navigate('/stock'); if (sku) { const targetProd = products.find((p) => p.sku === sku); if (targetProd) { setEditingProduct(targetProd); } } }} />} />
               <Route path="/proveedores" element={<ProveedoresView suppliers={suppliers} onAddSupplier={handleAddSupplier} onEditSupplier={handleEditSupplier} onDeleteSupplier={handleDeleteSupplier} />} />
-              <Route path="/configuracion" element={<ConfiguracionView users={users} currentUser={currentUser} onSwitchUser={handleSwitchUser} onUpdateUserRole={handleUpdateUserRole} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} onClearAllTestData={handleClearAllTestData} onRestoreTestData={handleRestoreTestData} />} />
+              <Route path="/configuracion" element={<ConfiguracionView users={users} currentUser={currentUser} onSwitchUser={handleSwitchUser} onUpdateUserRole={handleUpdateUserRole} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} onClearAllTestData={handleClearAllTestData} />} />
             </Route>
             <Route element={<RoleRoute allowedRoles={['developer', 'admin']} />}><Route path="/reportes-ventas" element={<ReportesVentasView />} /></Route>
-            <Route element={<RoleRoute allowedRoles={['developer']} />}><Route path="/configuracion-sistema" element={<ConfiguracionSistemaView onClearDatabase={handleClearAllTestData} onRestoreDatabase={handleRestoreTestData} />} /></Route>
+            <Route element={<RoleRoute allowedRoles={['developer']} />}><Route path="/configuracion-sistema" element={<ConfiguracionSistemaView onClearDatabase={handleClearAllTestData} />} /></Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -24,6 +24,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { ProductItem, Promotion, StockMovement } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface CartItem {
   product: ProductItem;
@@ -68,6 +69,18 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
   initialProduct,
   onConfirmSale,
 }) => {
+
+  // Quién está vendiendo: la persona logueada y su boutique
+  const { user, role } = useAuth();
+  const sellerName = user?.name?.trim() || 'Vendedor/a';
+  const businessName = user?.businessName?.trim() || 'Stocky';
+  const sellerRoleLabel =
+    role === 'developer'
+      ? 'Desarrollo & Administración'
+      : role === 'admin'
+      ? 'Administración & Ventas'
+      : 'Vendedora';
+
   // Cart state: list of items being sold in this transaction
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -336,7 +349,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
       saleNotes: notes.trim(),
       channel:
         channel === 'mostrador'
-          ? 'Venta Mostrador (Local Aries)'
+          ? `Venta Mostrador (Local ${businessName})`
           : channel === 'online'
           ? 'Tienda Online'
           : 'WhatsApp / Redes',
@@ -390,7 +403,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
       .join('\n');
 
     const text = 
-      `*Aries - Melina's Indumentaria* 🛍️✨\n` +
+      `*${businessName}*\n` +
       `*Ticket de Venta:* #${completedSale.ticketNumber}\n` +
       `*Fecha:* ${completedSale.date}\n` +
       `*Cliente:* ${completedSale.customerName}\n\n` +
@@ -399,7 +412,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
       `*TOTAL:* $${completedSale.total.toLocaleString('es-AR')}\n` +
       `*Forma de Pago:* ${completedSale.paymentDetails}\n` +
       (completedSale.saleNotes ? `*Observación:* ${completedSale.saleNotes}\n` : '') +
-      `\n¡Muchas gracias por elegir Aries! Esperamos que disfrutes tus prendas.`;
+      `\n¡Muchas gracias por elegir ${businessName}! Esperamos que disfrutes tu compra.`;
 
     const cleanPhone = completedSale.customerPhone ? completedSale.customerPhone.replace(/\D/g, '') : '';
     const waUrl = cleanPhone 
@@ -437,9 +450,9 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-[#5e5d69] mt-0.5">
-                <span className="font-bold text-[#42308f]">Melina Gomez</span>
+                <span className="font-bold text-[#42308f]">{sellerName}</span>
                 <span>•</span>
-                <span>Encargada de Ventas & Inventario</span>
+                <span>{sellerRoleLabel}</span>
               </div>
             </div>
           </div>
@@ -464,7 +477,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                 ¡Venta Registrada Exitosamente!
               </h3>
               <p className="text-xs text-[#5e5d69] max-w-md mx-auto">
-                Melina Gomez ha registrado la venta y el stock de cada prenda se ha descontado automáticamente del inventario.
+                {sellerName} ha registrado la venta y el stock de cada prenda se ha descontado automáticamente del inventario.
               </p>
             </div>
 
@@ -486,7 +499,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
               <div className="text-xs space-y-1.5 py-1">
                 <div className="flex justify-between">
                   <span className="text-[#5e5d69]">Vendedora responsable:</span>
-                  <span className="font-bold text-[#0b1c30]">Melina Gomez</span>
+                  <span className="font-bold text-[#0b1c30]">{sellerName}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[#5e5d69]">Cliente:</span>
@@ -578,7 +591,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                 Imprimir Comprobante
               </button>
               <button
-                id="btn-nueva-venta-melina"
+                id="btn-nueva-venta"
                 onClick={handleStartNewSale}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition-all shadow-sm"
               >
@@ -605,7 +618,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                     1. Seleccionar Prendas a Vender
                   </h3>
                   <p className="text-xs text-[#5e5d69]">
-                    Elige los artículos que Melina está entregando o despachando
+                    Elige los artículos que estás entregando o despachando
                   </p>
                 </div>
                 <span className="text-xs text-[#797583] font-medium bg-gray-100 px-2.5 py-0.5 rounded-full">
@@ -934,6 +947,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                           <input
                             type="number"
                             min="0"
+                            step="0.01"
                             value={amountTendered}
                             onChange={(e) => setAmountTendered(e.target.value)}
                             placeholder={finalTotal > 0 ? `${finalTotal}` : '0'}
@@ -989,7 +1003,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                         type="text"
                         value={transferRef}
                         onChange={(e) => setTransferRef(e.target.value)}
-                        placeholder="Ej: Transf. MP #49281 o Alias melina.aries"
+                        placeholder="Ej: Transf. MP #49281 o Alias de la cuenta"
                         className="w-full px-3 py-1.5 text-xs bg-white border border-blue-200 rounded-xl focus:outline-none focus:border-[#42308f]"
                       />
                     </div>
@@ -1035,6 +1049,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                         <input
                           type="number"
                           min="0"
+                          step="0.01"
                           value={anotadoPending}
                           onChange={(e) => setAnotadoPending(e.target.value)}
                           placeholder="0 si abona todo después"
@@ -1146,7 +1161,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
                 </button>
 
                 <p className="text-[10px] text-center text-[#797583]">
-                  Al confirmar, las {totalUnits} unidades se descontarán en tiempo real y quedará asentado el egreso a nombre de Melina Gomez.
+                  Al confirmar, las {totalUnits} unidades se descontarán en tiempo real y quedará asentado el egreso a nombre de {sellerName}.
                 </p>
               </div>
             </div>

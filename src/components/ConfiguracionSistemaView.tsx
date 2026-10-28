@@ -272,10 +272,10 @@ export const ConfiguracionSistemaView: React.FC<ConfiguracionSistemaProps> = ({
 
           <div className="space-y-2 font-mono text-xs">
             {[
-              { time: '17:15:02', user: 'dev@indumentaria-aries.com', role: 'developer', action: 'GET /configuracion-sistema', status: '200 OK (Autorizado)' },
-              { time: '17:10:44', user: 'melina@indumentaria-aries.com', role: 'admin', action: 'GET /reportes-ventas', status: '200 OK (Autorizado)' },
-              { time: '16:55:18', user: 'sofia.ventas@indumentaria-aries.com', role: 'vendedora', action: 'GET /dashboard', status: '200 OK (Autorizado)' },
-              { time: '16:40:09', user: 'sofia.ventas@indumentaria-aries.com', role: 'vendedora', action: 'ATTEMPT /configuracion-sistema', status: '403 FORBIDDEN (Bloqueado por RoleRoute)' },
+              { time: '17:15:02', user: 'dev@example.com', role: 'developer', action: 'GET /configuracion-sistema', status: '200 OK (Autorizado)' },
+              { time: '17:10:44', user: user?.name || 'Usuario actual', role: user?.role || 'admin', action: 'GET /reportes-ventas', status: '200 OK (Autorizado)' },
+              { time: '16:55:18', user: 'sofia.ventas@example.com', role: 'vendedora', action: 'GET /dashboard', status: '200 OK (Autorizado)' },
+              { time: '16:40:09', user: 'sofia.ventas@example.com', role: 'vendedora', action: 'ATTEMPT /configuracion-sistema', status: '403 FORBIDDEN (Bloqueado por RoleRoute)' },
             ].map((log, idx) => (
               <div key={idx} className="p-3 bg-[#f8f9ff] rounded-xl border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">

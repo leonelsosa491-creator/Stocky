@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
  * Redirige automáticamente al /login preservando la ruta de origen en location.state.
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -22,7 +22,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         <h2 className="font-heading font-bold text-lg text-[#0b1c30]">
           Verificando credenciales...
         </h2>
-        <p className="text-xs text-[#797583] mt-1">Cargando perfil de boutique Aries</p>
+        <p className="text-xs text-[#797583] mt-1">
+          Cargando perfil de boutique {user?.businessName?.trim() || 'registrada'}
+        </p>
       </div>
     );
   }

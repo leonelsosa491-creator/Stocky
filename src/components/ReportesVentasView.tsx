@@ -26,6 +26,8 @@ interface ReportRecord {
 
 export const ReportesVentasView: React.FC = () => {
   const { user } = useAuth();
+  const businessName = user?.businessName?.trim() || 'Stocky';
+  const businessNameForFile = businessName.replace(/[<>:"/\\|?*]/g, '_');
   
   const [cajaDate, setCajaDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [reportHistory, setReportHistory] = useState<ReportRecord[]>([]);
@@ -50,7 +52,7 @@ export const ReportesVentasView: React.FC = () => {
     // Encabezado
     doc.setFontSize(20);
     doc.setTextColor(66, 48, 143); // Color primary (#42308f)
-    doc.text('ARIES BOUTIQUE', 14, 22);
+    doc.text(businessName, 14, 22);
     
     doc.setFontSize(12);
     doc.setTextColor(40, 40, 40);
@@ -95,7 +97,7 @@ export const ReportesVentasView: React.FC = () => {
     });
 
     // Guardar Documento
-    const fileName = `Inventario_Aries_${dateStr.replace(/\//g, '-')}.pdf`;
+    const fileName = `Inventario_${businessNameForFile}_${dateStr.replace(/\//g, '-')}.pdf`;
     doc.save(fileName);
     return fileName;
   };
@@ -110,7 +112,7 @@ export const ReportesVentasView: React.FC = () => {
     // Encabezado
     doc.setFontSize(20);
     doc.setTextColor(5, 150, 105); // Color emerald-600
-    doc.text('ARIES BOUTIQUE', 14, 22);
+    doc.text(businessName, 14, 22);
     
     doc.setFontSize(12);
     doc.setTextColor(40, 40, 40);
@@ -161,7 +163,7 @@ export const ReportesVentasView: React.FC = () => {
     });
 
     // Guardar Documento
-    const fileName = `Cierre_Caja_Aries_${dateStr.replace(/\//g, '-')}.pdf`;
+    const fileName = `Cierre_Caja_${businessNameForFile}_${dateStr.replace(/\//g, '-')}.pdf`;
     doc.save(fileName);
     return fileName;
   };

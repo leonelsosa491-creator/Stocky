@@ -15,6 +15,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { Supplier } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface ProveedoresViewProps {
   suppliers: Supplier[];
@@ -29,6 +30,9 @@ export const ProveedoresView: React.FC<ProveedoresViewProps> = ({
   onEditSupplier,
   onDeleteSupplier,
 }) => {
+  const { user } = useAuth();
+  const userName = user?.name || 'tu equipo';
+  const businessName = user?.businessName?.trim() || 'tu boutique';
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Todas');
   const [typeFilter, setTypeFilter] = useState<'Todos' | 'Fábrica' | 'Proveedor'>('Todos');
@@ -158,7 +162,7 @@ export const ProveedoresView: React.FC<ProveedoresViewProps> = ({
     const clean = phoneStr.replace(/\D/g, '');
     const phoneWithCode = clean.startsWith('54') ? clean : `549${clean}`;
     const text = encodeURIComponent(
-      `Hola ${nameStr}! Te saludamos de parte de Melina (Aries Indumentaria). Nos comunicamos para coordinar pedidos de mercadería.`
+      `Hola ${nameStr}! Te saludamos de parte de ${userName} (${businessName}). Nos comunicamos para coordinar pedidos de mercadería.`
     );
     window.open(`https://wa.me/${phoneWithCode}?text=${text}`, '_blank');
   };
@@ -286,7 +290,7 @@ export const ProveedoresView: React.FC<ProveedoresViewProps> = ({
           <p className="text-xs text-[#797583] max-w-sm mx-auto mt-1 mb-5">
             {searchTerm || categoryFilter !== 'Todas' || typeFilter !== 'Todos'
               ? 'Probá ajustando el filtro de tipo, rubro o el texto de búsqueda.'
-              : 'Agregá los proveedores y fábricas con los que trabaja Melina para tener sus contactos centralizados.'}
+              : `Agregá los proveedores y fábricas con los que trabaja ${userName} para tener sus contactos centralizados.`}
           </p>
           <button
             onClick={handleOpenNew}
@@ -425,7 +429,7 @@ export const ProveedoresView: React.FC<ProveedoresViewProps> = ({
                   {editingSupplier ? 'Editar Proveedor o Fábrica' : 'Nuevo Proveedor o Fábrica'}
                 </h3>
                 <p className="text-xs text-gray-500">
-                  Melina trabaja exclusivamente con fábricas de confección y proveedores mayoristas.
+                  {userName} trabaja exclusivamente con fábricas de confección y proveedores mayoristas.
                 </p>
               </div>
               <button
@@ -601,7 +605,7 @@ export const ProveedoresView: React.FC<ProveedoresViewProps> = ({
               ¿Eliminar {supplierToDelete.type || 'registro'}?
             </h3>
             <p className="text-xs text-gray-600">
-              Vas a eliminar a <strong>{supplierToDelete.name}</strong> de la cartera de proveedores de Melina.
+              Vas a eliminar a <strong>{supplierToDelete.name}</strong> de la cartera de proveedores de {userName}.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button

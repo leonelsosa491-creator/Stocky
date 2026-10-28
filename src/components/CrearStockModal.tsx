@@ -16,9 +16,6 @@ interface CrearStockModalProps {
   onCreateStock: (category: CategorySummary, initialProduct?: ProductItem) => void;
 }
 
-// ==========================================
-// ÍCONOS DE ROPA DIBUJADOS A MEDIDA (SVG)
-// ==========================================
 const IconoPantalon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 3h14l-1.5 18h-4L12 11l-1.5 10h-4L5 3z" />
@@ -81,10 +78,8 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
   const [selectedIcon, setSelectedIcon] = useState('remera');
   const [nameError, setNameError] = useState('');
 
-  // Initial product toggle & form
   const [addInitialProduct, setAddInitialProduct] = useState(true);
   const [prodName, setProdName] = useState('');
-  const [prodSku, setProdSku] = useState('#501');
   const [prodSize, setProdSize] = useState('M');
   const [prodSeason, setProdSeason] = useState('Invierno');
   const [prodColorFamily, setProdColorFamily] = useState('Negro');
@@ -99,10 +94,6 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
   const handleStockNameChange = (val: string) => {
     setStockName(val);
     setNameError('');
-    if (!prodSku || prodSku.startsWith('#')) {
-      const rand = Math.floor(200 + Math.random() * 700);
-      setProdSku(`#${rand}`);
-    }
   };
 
   const handleSelectColor = (color: { name: string; hex: string }) => {
@@ -119,11 +110,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
       return;
     }
 
-    if (
-      existingCategoryNames.some(
-        (c) => c.toLowerCase() === trimmedName.toLowerCase()
-      )
-    ) {
+    if (existingCategoryNames.some((c) => c.toLowerCase() === trimmedName.toLowerCase())) {
       setNameError('Ya existe un stock o categoría con este nombre');
       return;
     }
@@ -131,12 +118,8 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
     let initialProduct: ProductItem | undefined = undefined;
 
     if (addInitialProduct && prodName.trim()) {
-      const finalSku =
-        prodSku.trim() ||
-        `${trimmedName.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
-
       initialProduct = {
-        sku: finalSku,
+        sku: '', // Supabase generará el código
         name: prodName.trim(),
         description: `Ingreso inicial en stock ${trimmedName}`,
         category: trimmedName,
@@ -175,25 +158,17 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-xl w-full card-shadow border border-[#c9c4d3]/40 p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
-        {/* Modal Header */}
         <div className="flex justify-between items-start pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#eff4ff] text-[#42308f] flex items-center justify-center">
               <PackagePlus className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-heading text-lg font-bold text-[#0b1c30]">
-                Crear Nuevo Stock
-              </h2>
-              <p className="text-xs text-[#5e5d69]">
-                Registra un nuevo departamento de indumentaria y sus prendas
-              </p>
+              <h2 className="font-heading text-lg font-bold text-[#0b1c30]">Crear Nuevo Stock</h2>
+              <p className="text-xs text-[#5e5d69]">Registra un nuevo departamento de indumentaria y sus prendas</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -201,56 +176,19 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-5 pt-4">
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                Nombre de la Colección / Stock *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Ej. Vestidos, Camperas, Calzado, Sweaters..."
-                value={stockName}
-                onChange={(e) => handleStockNameChange(e.target.value)}
-                className={`w-full text-xs px-3.5 py-2.5 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none transition-colors ${
-                  nameError ? 'border-rose-400 focus:border-rose-500' : ''
-                }`}
-              />
-              {nameError && (
-                <p className="text-[11px] text-rose-600 font-semibold mt-1">
-                  {nameError}
-                </p>
-              )}
+              <label className="block text-xs font-bold text-gray-700 mb-1">Nombre de la Colección / Stock *</label>
+              <input type="text" required placeholder="Ej. Vestidos, Camperas, Calzado, Sweaters..." value={stockName} onChange={(e) => handleStockNameChange(e.target.value)} className={`w-full text-xs px-3.5 py-2.5 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none transition-colors ${nameError ? 'border-rose-400 focus:border-rose-500' : ''}`} />
+              {nameError && <p className="text-[11px] text-rose-600 font-semibold mt-1">{nameError}</p>}
             </div>
-
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                Descripción (Opcional)
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. Colección de temporada, prendas de alta gama o sastrería"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full text-xs px-3.5 py-2 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none transition-colors"
-              />
+              <label className="block text-xs font-bold text-gray-700 mb-1">Descripción (Opcional)</label>
+              <input type="text" placeholder="Ej. Colección de temporada, prendas de alta gama o sastrería" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full text-xs px-3.5 py-2 bg-[#f8f9ff] border border-[#c9c4d3]/60 rounded-xl focus:border-[#42308f] focus:bg-white focus:outline-none transition-colors" />
             </div>
-
             <div className="pt-1">
-              <label className="block text-xs font-bold text-gray-700 mb-2">
-                Ícono Visual (Para el menú)
-              </label>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Ícono Visual (Para el menú)</label>
               <div className="flex flex-wrap gap-2.5">
                 {AVAILABLE_ICONS.map((ico) => (
-                  <button
-                    key={ico.id}
-                    type="button"
-                    onClick={() => setSelectedIcon(ico.id)}
-                    title={ico.label}
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
-                      selectedIcon === ico.id
-                        ? 'bg-[#42308f] text-white shadow-md ring-2 ring-[#42308f]/30 scale-105'
-                        : 'bg-[#f8f9ff] text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f] border border-[#c9c4d3]/30'
-                    }`}
-                  >
+                  <button key={ico.id} type="button" onClick={() => setSelectedIcon(ico.id)} title={ico.label} className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${selectedIcon === ico.id ? 'bg-[#42308f] text-white shadow-md ring-2 ring-[#42308f]/30 scale-105' : 'bg-[#f8f9ff] text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f] border border-[#c9c4d3]/30'}`}>
                     {ico.icon}
                   </button>
                 ))}
@@ -261,15 +199,8 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
           <div className="pt-2 border-t border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={addInitialProduct}
-                  onChange={(e) => setAddInitialProduct(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#42308f] focus:ring-[#42308f] bg-white border-gray-300"
-                />
-                <span className="text-xs font-bold text-[#0b1c30]">
-                  Cargar primera prenda a este stock ahora
-                </span>
+                <input type="checkbox" checked={addInitialProduct} onChange={(e) => setAddInitialProduct(e.target.checked)} className="w-4 h-4 rounded text-[#42308f] focus:ring-[#42308f] bg-white border-gray-300" />
+                <span className="text-xs font-bold text-[#0b1c30]">Cargar primera prenda a este stock ahora</span>
               </label>
             </div>
 
@@ -280,67 +211,27 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
                   <span>Datos de la Prenda Inicial</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Nombre de la Prenda *
-                    </label>
-                    <input
-                      type="text"
-                      required={addInitialProduct}
-                      placeholder="Ej. Remera Básica..."
-                      value={prodName}
-                      onChange={(e) => setProdName(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Código de Prenda / Etiqueta
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ej. #501"
-                      value={prodSku}
-                      onChange={(e) => setProdSku(e.target.value)}
-                      className="w-full text-xs font-mono font-bold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none text-[#42308f]"
-                    />
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Nombre de la Prenda *</label>
+                    <input type="text" required={addInitialProduct} placeholder="Ej. Remera Básica..." value={prodName} onChange={(e) => setProdName(e.target.value)} className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Talle Seleccionable
-                    </label>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Talle Seleccionable</label>
                     <div className="flex gap-1.5 flex-wrap">
                       {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((sz) => (
-                        <button
-                          key={sz}
-                          type="button"
-                          onClick={() => setProdSize(sz)}
-                          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                            prodSize === sz
-                              ? 'bg-[#42308f] text-white shadow-xs'
-                              : 'bg-white border border-gray-200 text-gray-700 hover:border-[#42308f]'
-                          }`}
-                        >
+                        <button key={sz} type="button" onClick={() => setProdSize(sz)} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${prodSize === sz ? 'bg-[#42308f] text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-700 hover:border-[#42308f]'}`}>
                           {sz}
                         </button>
                       ))}
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Temporada
-                    </label>
-                    <select
-                      value={prodSeason}
-                      onChange={(e) => setProdSeason(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
-                    >
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Temporada</label>
+                    <select value={prodSeason} onChange={(e) => setProdSeason(e.target.value)} className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none">
                       <option value="Verano">Verano</option>
                       <option value="Invierno">Invierno</option>
                       <option value="Otoño">Otoño</option>
@@ -351,92 +242,33 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-bold text-gray-700">
-                      Familia de Color Principal: <span className="font-extrabold text-[#42308f]">{prodColorFamily}</span>
-                    </label>
+                    <label className="block text-[11px] font-bold text-gray-700">Familia de Color Principal: <span className="font-extrabold text-[#42308f]">{prodColorFamily}</span></label>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 pt-0.5">
                     {MAIN_COLOR_FAMILIES.map((col) => (
-                      <button
-                        key={col.name}
-                        type="button"
-                        onClick={() => handleSelectColor(col)}
-                        title={col.name}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                          prodColorFamily === col.name
-                            ? 'ring-2 ring-offset-2 ring-[#42308f] scale-110 shadow-xs'
-                            : 'hover:scale-105 opacity-90'
-                        }`}
-                        style={{
-                          backgroundColor: col.hex,
-                          border: col.hasBorder ? '1px solid #d1d5db' : 'none',
-                        }}
-                      >
-                        {prodColorFamily === col.name && (
-                          <Check
-                            className={`w-3.5 h-3.5 ${
-                              col.name === 'Blanco' || col.name === 'Amarillo' || col.name === 'Celeste'
-                                ? 'text-gray-900'
-                                : 'text-white'
-                            }`}
-                          />
-                        )}
+                      <button key={col.name} type="button" onClick={() => handleSelectColor(col)} title={col.name} className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${prodColorFamily === col.name ? 'ring-2 ring-offset-2 ring-[#42308f] scale-110 shadow-xs' : 'hover:scale-105 opacity-90'}`} style={{ backgroundColor: col.hex, border: col.hasBorder ? '1px solid #d1d5db' : 'none' }}>
+                        {prodColorFamily === col.name && <Check className={`w-3.5 h-3.5 ${col.name === 'Blanco' || col.name === 'Amarillo' || col.name === 'Celeste' ? 'text-gray-900' : 'text-white'}`} />}
                       </button>
                     ))}
                   </div>
-
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Color Específico o Comercial (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={`Ej. ${prodColorFamily === 'Rojo' ? 'Bordó, Rojo Cherry...' : prodColorFamily === 'Marrón' ? 'Marrón Oscuro, Chocolate...' : 'Tono comercial de la boutique...'}`}
-                      value={prodSpecificColor}
-                      onChange={(e) => setProdSpecificColor(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
-                    />
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Color Específico o Comercial (Opcional)</label>
+                    <input type="text" placeholder={`Ej. ${prodColorFamily === 'Rojo' ? 'Bordó, Rojo Cherry...' : prodColorFamily === 'Marrón' ? 'Marrón Oscuro, Chocolate...' : 'Tono comercial de la boutique...'}`} value={prodSpecificColor} onChange={(e) => setProdSpecificColor(e.target.value)} className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2.5 pt-1">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Stock Inicial
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={prodStock}
-                      onChange={(e) => setProdStock(Number(e.target.value))}
-                      className="w-full text-xs font-bold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none text-[#42308f]"
-                    />
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Stock Inicial</label>
+                    <input type="number" min="0" value={prodStock === 0 ? '' : prodStock} onChange={(e) => setProdStock(e.target.value === '' ? 0 : Number(e.target.value))} className="w-full text-xs font-bold px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none text-[#42308f]" />
                   </div>
-
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Precio Venta ($)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={prodPrice}
-                      onChange={(e) => setProdPrice(Number(e.target.value))}
-                      className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
-                    />
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Precio Venta ($)</label>
+                    <input type="number" min="0" step="0.01" value={prodPrice === 0 ? '' : prodPrice} onChange={(e) => setProdPrice(e.target.value === '' ? 0 : Number(e.target.value))} className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none" />
                   </div>
-
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                      Costo ($)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={prodCost}
-                      onChange={(e) => setProdCost(Number(e.target.value))}
-                      className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none"
-                    />
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Costo ($)</label>
+                    <input type="number" min="0" step="0.01" value={prodCost === 0 ? '' : prodCost} onChange={(e) => setProdCost(e.target.value === '' ? 0 : Number(e.target.value))} className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none" />
                   </div>
                 </div>
               </div>
@@ -444,17 +276,10 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
           </div>
 
           <div className="pt-3 flex justify-end items-center gap-2.5 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
-            >
+            <button type="button" onClick={onClose} className="px-5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
-            >
+            <button type="submit" className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer">
               <Plus className="w-4 h-4" />
               Crear Stock
             </button>

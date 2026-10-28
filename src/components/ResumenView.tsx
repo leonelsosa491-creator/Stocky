@@ -129,6 +129,9 @@ const LegendRow: React.FC<LegendRowProps> = ({ dotClass, textClass, label, perce
   );
 };
 
+const toLocalISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const ResumenView: React.FC<ResumenViewProps> = ({
   categories,
   products,
@@ -161,11 +164,11 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   // Date constants for quick buttons
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => toLocalISO(new Date()), []);
   const yesterdayStr = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
+    return toLocalISO(d);
   }, []);
 
   // Format readable date in Spanish

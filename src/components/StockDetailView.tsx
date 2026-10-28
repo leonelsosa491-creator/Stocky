@@ -26,6 +26,7 @@ import {
 import { ProductItem, Promotion, CategorySummary } from '../types';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { Can, ROLES_GESTION, useCan } from './auth/Can';
+import { useAuth } from '../context/AuthContext';
 import {
   MAIN_COLOR_FAMILIES,
   matchesColorFamily,
@@ -50,6 +51,9 @@ interface StockDetailViewProps {
   onDeleteProduct?: (sku: string) => void;
   onExport: () => void;
   onUpdateProductStock: (sku: string, newStock: number) => void;
+  // Nuevas props para gestionar categorías completas
+  onRenameCategory?: (oldName: string, newName: string) => void;
+  onDeleteCategory?: (categoryName: string) => void;
 }
 
 const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -73,9 +77,17 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
   onDeleteProduct,
   onExport,
   onUpdateProductStock,
+  onRenameCategory,
+  onDeleteCategory,
 }) => {
+  const { user } = useAuth();
   const puedeGestionar = useCan(ROLES_GESTION);
   const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
+  
+  // Estados para renombrar/eliminar categoría
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [categoryToRename, setCategoryToRename] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'bajo' | 'agotado' | 'ok'>(
     initialStatusFilter || 'all'
@@ -229,7 +241,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
     );
   };
 
-const getCategoryIcon = (iconName: string, catName: string) => {
+  const getCategoryIcon = (iconName: string, catName: string) => {
     if (iconName === 'remera' || catName === 'Remeras') return <Shirt className="w-4 h-4" />;
     if (iconName === 'pantalon' || catName === 'Pantalones') {
       return (
@@ -296,13 +308,13 @@ const getCategoryIcon = (iconName: string, catName: string) => {
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-bold text-[#5e5d69] uppercase tracking-wider">
           <button
             onClick={onNavigateToResumen}
-            className="hover:text-[#42308f] transition-colors"
+            className="hover:text-[#42308f] transition-colors cursor-pointer"
           >
-            STOCK GENERAL
+            INVENTARIO GENERAL
           </button>
           <ChevronRight className="w-3.5 h-3.5 text-[#c9c4d3]" />
           <span className="text-[#42308f] font-extrabold">
-            {selectedCategory === 'Todas' ? 'TODAS LAS PRENDAS' : selectedCategory.toUpperCase()}
+            {selectedCategory === 'Todas' ? 'Prendas en todas las categorias' : selectedCategory.toUpperCase()}
           </span>
           {sizeFilter && (
             <>
@@ -315,7 +327,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="font-heading text-3xl font-extrabold text-[#0b1c30] tracking-tight flex items-center gap-3">
-              <span>Stock de {selectedCategory === 'Todas' ? 'Todas las Prendas' : selectedCategory}</span>
+              <span>{selectedCategory === 'Todas' ? 'Inventario General' : `Inventario de ${selectedCategory}`}</span>
               <span className="text-xs font-bold font-sans bg-[#eff4ff] text-[#42308f] px-3 py-1 rounded-full border border-[#42308f]/20">
                 {totalInView} unidades
               </span>
@@ -325,10 +337,9 @@ const getCategoryIcon = (iconName: string, catName: string) => {
           <div className="flex flex-wrap items-center gap-2.5">
             {onOpenRegistrarVenta && (
               <button
-                id="btn-stock-registrar-venta"
                 onClick={() => onOpenRegistrarVenta()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95"
-                title="Registrar venta realizada por Melina (Descuenta stock)"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                title={`Registrar venta realizada por ${user?.name || 'la persona logueada'} (Descuenta stock)`}
               >
                 <ShoppingBag className="w-4 h-4" />
                 Registrar Venta
@@ -340,12 +351,9 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               onClick={() => {
                 onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'reponer');
               }}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-[#c9c4d3]/40 dark:border-[#2d2a3d] dark:bg-[#1e1b29] rounded-full text-xs font-bold text-[#42308f] dark:text-[#b8aee0] hover:bg-[#f8f9ff] dark:hover:bg-[#2a263d] transition-all shadow-sm cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-[#c9c4d3]/40 rounded-full text-xs font-bold text-[#42308f] hover:bg-[#f8f9ff] transition-all shadow-sm cursor-pointer"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
+              <Package className="w-4 h-4" />
               Reponer Existente
             </button>
 
@@ -355,10 +363,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               }}
               className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#42308f] rounded-full text-xs font-bold text-white hover:bg-[#5a49a8] transition-all shadow-sm cursor-pointer"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 5v14" />
-                <path d="M5 12h14" />
-              </svg>
+              <Plus className="w-4 h-4" />
               + Prenda Nueva
             </button>
             </Can>
@@ -368,7 +373,6 @@ const getCategoryIcon = (iconName: string, catName: string) => {
 
       {statusFilter !== 'all' && (
         <div
-          id="banner-atencion-stock"
           className={`rounded-3xl p-5 border shadow-sm transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
             statusFilter === 'bajo'
               ? 'bg-gradient-to-r from-amber-50 to-amber-100/60 border-amber-300/80 text-amber-950'
@@ -425,7 +429,6 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-2 self-start md:self-auto shrink-0 flex-wrap">
             <button
               onClick={() => handleSetStatusFilter('all')}
@@ -433,15 +436,6 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             >
               Ver todos los artículos
             </button>
-            <Can role={ROLES_GESTION}>
-            <button
-              onClick={() => onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined)}
-              className="px-4 py-2 rounded-full bg-[#42308f] hover:bg-[#5a49a8] text-xs font-bold text-white shadow-xs transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Reponer Stock
-            </button>
-            </Can>
           </div>
         </div>
       )}
@@ -449,7 +443,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-[#c9c4d3]/40 card-shadow space-y-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e5d69]">
-            Seleccionar Tipo de Prenda / Stock
+            Seleccionar categoría
           </span>
           <span className="text-[11px] text-[#797583]">
             {visibleCategories.length} stocks registrados
@@ -459,14 +453,14 @@ const getCategoryIcon = (iconName: string, catName: string) => {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => onNavigateToCategory('Todas')}
-            className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+            className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
               selectedCategory === 'Todas'
                 ? 'bg-[#42308f] text-white shadow-md ring-2 ring-[#42308f]/30 scale-105'
                 : 'bg-[#f8f9ff] text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f] border border-[#c9c4d3]/30'
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Todos los Stocks</span>
+            <span>Todas las categorías</span>
           </button>
 
           {visibleCategories.map((cat) => {
@@ -475,7 +469,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
               <button
                 key={cat.name}
                 onClick={() => onNavigateToCategory(cat.name)}
-                className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+                className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-[#42308f] text-white shadow-md ring-2 ring-[#42308f]/30 scale-105'
                     : 'bg-[#f8f9ff] text-[#5e5d69] hover:bg-[#eff4ff] hover:text-[#42308f] border border-[#c9c4d3]/30'
@@ -493,7 +487,7 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#eff4ff] text-[#42308f] hover:bg-[#e0e9ff] border border-dashed border-[#42308f]/40 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Nuevo</span>
+            <span>Crear nueva categoría</span>
           </button>
           </Can>
         </div>
@@ -508,9 +502,6 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             <h3 className="font-heading text-sm font-bold text-[#0b1c30]">
               Filtros Seleccionables
             </h3>
-            <span className="text-xs text-[#797583]">
-              (Estado, Talle, Temporada y Color)
-            </span>
           </div>
 
           {hasActiveFilters && (
@@ -560,27 +551,8 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                 <XCircle className="w-3.5 h-3.5" />
                 <span>Sin Stock ({countAgotado})</span>
               </button>
-              <button
-                onClick={() => handleSetStatusFilter('ok')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  statusFilter === 'ok'
-                    ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300'
-                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/80'
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Stock Óptimo ({countOk})</span>
-              </button>
             </div>
           </div>
-          {statusFilter !== 'all' && (
-            <button
-              onClick={() => handleSetStatusFilter('all')}
-              className="text-xs font-bold text-[#42308f] hover:underline self-start sm:self-auto cursor-pointer"
-            >
-              Ver todos los estados
-            </button>
-          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -592,10 +564,8 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             <div className="flex flex-wrap items-center gap-1.5">
               <button
                 onClick={() => setSizeFilter(null)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  sizeFilter === null
-                    ? 'bg-[#42308f] text-white shadow-xs'
-                    : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  sizeFilter === null ? 'bg-[#42308f] text-white shadow-xs' : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
                 }`}
               >
                 Todos
@@ -604,10 +574,8 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                 <button
                   key={sz}
                   onClick={() => setSizeFilter(sizeFilter === sz ? null : sz)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    sizeFilter === sz
-                      ? 'bg-[#42308f] text-white shadow-xs ring-2 ring-[#42308f]/20'
-                      : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    sizeFilter === sz ? 'bg-[#42308f] text-white shadow-xs ring-2 ring-[#42308f]/20' : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
                   }`}
                 >
                   {sz}
@@ -624,10 +592,8 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             <div className="flex flex-wrap items-center gap-1.5">
               <button
                 onClick={() => setSeasonFilter(null)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  seasonFilter === null
-                    ? 'bg-[#42308f] text-white shadow-xs'
-                    : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  seasonFilter === null ? 'bg-[#42308f] text-white shadow-xs' : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
                 }`}
               >
                 Todas
@@ -636,10 +602,8 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                 <button
                   key={sea}
                   onClick={() => setSeasonFilter(seasonFilter === sea ? null : sea)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    seasonFilter === sea
-                      ? 'bg-[#42308f] text-white shadow-xs ring-2 ring-[#42308f]/20'
-                      : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    seasonFilter === sea ? 'bg-[#42308f] text-white shadow-xs ring-2 ring-[#42308f]/20' : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
                   }`}
                 >
                   {sea}
@@ -651,48 +615,28 @@ const getCategoryIcon = (iconName: string, catName: string) => {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-gray-700">Familia de Color:</span>
-              <span className="text-[#42308f] font-extrabold">{colorFilter || 'Todos'}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setColorFilter(null)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  colorFilter === null
-                    ? 'bg-[#42308f] text-white shadow-xs'
-                    : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  colorFilter === null ? 'bg-[#42308f] text-white shadow-xs' : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
                 }`}
               >
                 Todos ({scopedProducts.length})
               </button>
               {MAIN_COLOR_FAMILIES.map((col) => {
                 const isSelected = colorFilter === col.name;
-                const count = scopedProducts.filter((p) => matchesColorFamily(p, col.name)).length;
                 return (
                   <button
                     key={col.name}
                     onClick={() => setColorFilter(isSelected ? null : col.name)}
-                    title={`Filtrar por familia ${col.name} (${count} prendas)`}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#42308f] text-white shadow-xs ring-2 ring-[#42308f]/20'
-                        : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      isSelected ? 'bg-[#42308f] text-white shadow-xs ring-2 ring-[#42308f]/20' : 'bg-[#f8f9ff] text-gray-700 hover:bg-gray-100 border border-gray-200'
                     }`}
                   >
-                    <span
-                      className="w-3.5 h-3.5 rounded-full shadow-2xs shrink-0"
-                      style={{
-                        backgroundColor: col.hex,
-                        border: col.hasBorder ? '1px solid #d1d5db' : 'none',
-                      }}
-                    />
+                    <span className="w-3.5 h-3.5 rounded-full shadow-2xs shrink-0" style={{ backgroundColor: col.hex, border: col.hasBorder ? '1px solid #d1d5db' : 'none' }} />
                     <span>{col.name}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-gray-200/80 text-gray-600'
-                      }`}
-                    >
-                      {count}
-                    </span>
                   </button>
                 );
               })}
@@ -710,6 +654,30 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             <span className="text-xs text-[#797583] bg-gray-100 px-2.5 py-0.5 rounded-full font-medium">
               {filteredProducts.length} prendas
             </span>
+            
+            {selectedCategory !== 'Todas' && (
+              <Can role={ROLES_GESTION}>
+                <div className="flex items-center gap-1 ml-2 border-l border-gray-200 pl-3">
+                  <button
+                    onClick={() => {
+                      setCategoryToRename(selectedCategory);
+                      setNewCategoryName(selectedCategory);
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-[#42308f] hover:bg-[#eff4ff] rounded-lg transition-colors cursor-pointer"
+                    title="Renombrar Colección/Stock"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setCategoryToDelete(selectedCategory)}
+                    className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    title="Eliminar Colección completa"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </Can>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -725,22 +693,10 @@ const getCategoryIcon = (iconName: string, catName: string) => {
             </div>
 
             <div className="flex items-center bg-[#eff4ff] p-0.5 rounded-xl border border-[#c9c4d3]/30">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  viewMode === 'list' ? 'bg-[#42308f] text-white shadow-xs' : 'text-[#5e5d69] hover:text-[#42308f]'
-                }`}
-                title="Vista de lista"
-              >
+              <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-lg transition-colors cursor-pointer ${viewMode === 'list' ? 'bg-[#42308f] text-white shadow-xs' : 'text-[#5e5d69] hover:text-[#42308f]'}`}>
                 <LayoutList className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  viewMode === 'grid' ? 'bg-[#42308f] text-white shadow-xs' : 'text-[#5e5d69] hover:text-[#42308f]'
-                }`}
-                title="Vista de cuadrícula"
-              >
+              <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-[#42308f] text-white shadow-xs' : 'text-[#5e5d69] hover:text-[#42308f]'}`}>
                 <LayoutGrid className="w-4 h-4" />
               </button>
             </div>
@@ -750,42 +706,18 @@ const getCategoryIcon = (iconName: string, catName: string) => {
         {filteredProducts.length === 0 ? (
           <div className="p-12 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-[#eff4ff] text-[#42308f] flex items-center justify-center mx-auto">
-              {statusFilter === 'bajo' ? (
-                <CheckCircle2 className="w-7 h-7 text-emerald-600" />
-              ) : (
-                <Package className="w-7 h-7" />
-              )}
+              {statusFilter === 'bajo' ? <CheckCircle2 className="w-7 h-7 text-emerald-600" /> : <Package className="w-7 h-7" />}
             </div>
             <div>
               <h4 className="font-heading text-lg font-bold text-[#0b1c30]">
-                {statusFilter === 'bajo'
-                  ? '¡Excelente! No hay prendas con stock bajo en esta selección'
-                  : statusFilter === 'agotado'
-                  ? 'No hay prendas agotadas en esta selección'
-                  : 'No hay prendas cargadas en este stock con los filtros actuales'}
+                {statusFilter === 'bajo' ? '¡Excelente! No hay prendas con stock bajo en esta selección' : statusFilter === 'agotado' ? 'No hay prendas agotadas en esta selección' : 'No hay prendas cargadas en este stock con los filtros actuales'}
               </h4>
-              <p className="text-xs text-[#5e5d69] max-w-md mx-auto mt-1">
-                {statusFilter !== 'all'
-                  ? 'Las prendas revisadas cuentan con niveles normales o no cumplen con los filtros adicionales seleccionados.'
-                  : 'Puedes limpiar los filtros de talle, temporada y color, o cargar una nueva prenda directamente a este stock.'}
-              </p>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
-              {hasActiveFilters && (
-                <button
-                  onClick={clearAllFilters}
-                  className="px-4 py-2 rounded-full border border-[#c9c4d3]/60 text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-                >
-                  Restablecer Filtros
-                </button>
-              )}
+              {hasActiveFilters && <button onClick={clearAllFilters} className="px-4 py-2 rounded-full border border-[#c9c4d3]/60 text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">Restablecer Filtros</button>}
               <Can role={ROLES_GESTION}>
-              <button
-                onClick={() => onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined)}
-                className="px-5 py-2 rounded-full bg-[#42308f] text-white text-xs font-bold hover:bg-[#5a49a8] flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Cargar Prenda Ahora
+              <button onClick={() => onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined)} className="px-5 py-2 rounded-full bg-[#42308f] text-white text-xs font-bold hover:bg-[#5a49a8] flex items-center gap-1.5 cursor-pointer">
+                <Plus className="w-4 h-4" /> Cargar Prenda Ahora
               </button>
               </Can>
             </div>
@@ -806,366 +738,98 @@ const getCategoryIcon = (iconName: string, catName: string) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {filteredProducts.map((prod) => {
-                  const promo = getActivePromotion(prod);
-                  return (
-                    <tr
-                      key={prod.sku}
-                      className="hover:bg-[#f8f9ff] transition-colors group cursor-pointer"
-                      onClick={() => { if (puedeGestionar) onEditStock(prod); }}
-                    >
-                      <td className="px-6 py-4 font-mono text-xs font-bold text-[#42308f]">
-                        {prod.sku}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-[#0b1c30] group-hover:text-[#42308f] transition-colors">
-                              {prod.name}
-                            </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                              {prod.category}
-                            </span>
-                            {promo && (
-                              <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#eff4ff] text-[#42308f] border border-[#42308f]/20 shadow-2xs"
-                                title={`Promoción activa: ${promo.title}`}
-                              >
-                                <Tag className="w-2.5 h-2.5" />
-                                {promo.discountType === 'porcentaje'
-                                  ? `${promo.discountValue}% OFF`
-                                  : promo.discountType === 'dos_por_uno'
-                                  ? '2x1'
-                                  : `$${promo.discountValue} OFF`}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-[#5e5d69] mt-0.5">
-                            {prod.description}
-                          </div>
+                {filteredProducts.map((prod) => (
+                  <tr key={prod.sku} className="hover:bg-[#f8f9ff] transition-colors group cursor-pointer" onClick={() => { if (puedeGestionar) onEditStock(prod); }}>
+                    <td className="px-6 py-4 font-mono text-xs font-bold text-[#42308f]">{prod.sku}</td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-[#0b1c30] group-hover:text-[#42308f] transition-colors">{prod.name}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">{prod.category}</span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSizeFilter(prod.size);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-[#eff4ff] hover:text-[#42308f] text-xs font-bold text-[#0b1c30] transition-colors"
-                          title={`Filtrar por talle ${prod.size}`}
-                        >
-                          {prod.size}
+                        <div className="text-xs text-[#5e5d69] mt-0.5">{prod.description}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button onClick={(e) => { e.stopPropagation(); setSizeFilter(prod.size); }} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-[#eff4ff] hover:text-[#42308f] text-xs font-bold text-[#0b1c30] transition-colors cursor-pointer">{prod.size}</button>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="inline-flex items-center gap-2 cursor-pointer group/color" onClick={(e) => { e.stopPropagation(); setColorFilter(prod.colorFamily || prod.colorName); }}>
+                        <span className="w-4 h-4 rounded-full inline-block shadow-xs shrink-0 ring-1 ring-black/10" style={{ backgroundColor: prod.colorHex }} />
+                        <span className="text-xs font-semibold text-gray-800 group-hover:text-[#42308f] block">{getProductColorDisplay(prod).primary}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button onClick={(e) => { e.stopPropagation(); setSeasonFilter(prod.season); }} className="text-xs font-medium text-[#5e5d69] hover:text-[#42308f] transition-colors cursor-pointer">{prod.season}</button>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`font-heading text-lg font-extrabold ${prod.stock === 0 ? 'text-[#ba1a1a]' : 'text-[#42308f]'}`}>{prod.stock}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">{getStatusBadge(prod.status, prod.stock)}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Can role={ROLES_GESTION}>
+                        <button onClick={(e) => { e.stopPropagation(); if (onQuickReplenish) { onQuickReplenish(prod); } else { onOpenCargarProducto(prod.category); } }} className="group/btn relative p-1.5 text-[#42308f] hover:text-[#5a49a8] hover:bg-[#eff4ff] rounded-lg transition-colors cursor-pointer">
+                          <Plus className="w-4 h-4" />
                         </button>
-                      </td>
-                      <td className="px-6 py-4">
-                        {(() => {
-                          const colDisplay = getProductColorDisplay(prod);
-                          return (
-                            <div
-                              className="inline-flex items-center gap-2 cursor-pointer group/color"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setColorFilter(colDisplay.family);
-                              }}
-                              title={colDisplay.tooltipText}
-                            >
-                              <span
-                                className="w-4 h-4 rounded-full inline-block shadow-xs shrink-0 ring-1 ring-black/10"
-                                style={{ backgroundColor: prod.colorHex }}
-                              />
-                              <div>
-                                <span className="text-xs font-semibold text-gray-800 group-hover:text-[#42308f] block">
-                                  {colDisplay.primary}
-                                </span>
-                                {colDisplay.hasSpecific && (
-                                  <span className="text-[10px] text-gray-500 font-normal block">
-                                    Fam. {colDisplay.family}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSeasonFilter(prod.season);
-                          }}
-                          className="text-xs font-medium text-[#5e5d69] hover:text-[#42308f] transition-colors"
-                          title={`Filtrar por temporada ${prod.season}`}
-                        >
-                          {prod.season}
+                        </Can>
+                        {onOpenRegistrarVenta && (
+                          <button onClick={(e) => { e.stopPropagation(); onOpenRegistrarVenta(prod); }} disabled={prod.stock === 0} className={`group/btn relative p-1.5 rounded-lg transition-colors cursor-pointer ${prod.stock === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'}`}>
+                            <ShoppingBag className="w-4 h-4" />
+                          </button>
+                        )}
+                        <Can role={ROLES_GESTION}>
+                        <button onClick={(e) => { e.stopPropagation(); onEditStock(prod); }} className="group/btn relative p-1.5 text-gray-400 hover:text-[#42308f] hover:bg-[#eff4ff] rounded-lg transition-colors cursor-pointer">
+                          <Edit3 className="w-4 h-4" />
                         </button>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span
-                          className={`font-heading text-lg font-extrabold ${
-                            prod.stock === 0 ? 'text-[#ba1a1a]' : 'text-[#42308f]'
-                          }`}
-                        >
-                          {prod.stock}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {getStatusBadge(prod.status, prod.stock)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Can role={ROLES_GESTION}>
-                          {/* 1. Botón Reponer */}
-                          <button
-                            id={`btn-reponer-row-${prod.sku}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onQuickReplenish) {
-                                onQuickReplenish(prod);
-                              } else {
-                                onOpenCargarProducto(prod.category);
-                              }
-                            }}
-                            className="group/btn relative p-1.5 text-[#42308f] hover:text-[#5a49a8] hover:bg-[#eff4ff] rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
-                              Reponer stock rápido
-                            </span>
+                        {onDeleteProduct && (
+                          <button onClick={(e) => { e.stopPropagation(); setProductToDelete(prod); }} className="group/btn relative p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer">
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                          </Can>
-
-                          {/* 2. Botón Vender */}
-                          {onOpenRegistrarVenta && (
-                            <button
-                              id={`btn-vender-row-${prod.sku}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenRegistrarVenta(prod);
-                              }}
-                              disabled={prod.stock === 0}
-                              className={`group/btn relative p-1.5 rounded-lg transition-colors ${
-                                prod.stock === 0
-                                  ? 'text-gray-300 cursor-not-allowed'
-                                  : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
-                              }`}
-                            >
-                              <ShoppingBag className="w-4 h-4" />
-                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
-                                {prod.stock === 0 ? 'Sin stock para vender' : 'Vender prenda'}
-                              </span>
-                            </button>
-                          )}
-
-                          {/* 3. Botón Reservar */}
-                          {onOpenReserva && (
-                            <button
-                              id={`btn-reservar-row-${prod.sku}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenReserva(prod);
-                              }}
-                              disabled={prod.stock === 0}
-                              className={`group/btn relative p-1.5 rounded-lg transition-colors ${
-                                prod.stock === 0
-                                  ? 'text-gray-300 cursor-not-allowed'
-                                  : 'text-[#42308f] hover:text-[#5a49a8] hover:bg-[#eff4ff]'
-                              }`}
-                            >
-                              <CalendarCheck className="w-4 h-4" />
-                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
-                                {prod.stock === 0 ? 'Sin stock para reservar' : 'Reservar con seña'}
-                              </span>
-                            </button>
-                          )}
-
-                          <Can role={ROLES_GESTION}>
-                          {/* 4. Botón Editar */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditStock(prod);
-                            }}
-                            className="group/btn relative p-1.5 text-gray-400 hover:text-[#42308f] hover:bg-[#eff4ff] rounded-lg transition-colors"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
-                              Editar prenda
-                            </span>
-                          </button>
-
-                          {/* 5. Botón Eliminar */}
-                          {onDeleteProduct && (
-                            <button
-                              id={`btn-eliminar-stock-${prod.sku}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setProductToDelete(prod);
-                              }}
-                              className="group/btn relative p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-4 py-2 bg-[#42308f] text-white text-[12px] font-bold rounded-full opacity-0 group-hover/btn:opacity-100 pointer-events-none transition-all duration-200 ease-in-out -translate-y-1 group-hover/btn:-translate-y-2 z-50 shadow-[0_0_15px_rgba(66,48,143,0.4)]">
-                                Eliminar prenda del inventario
-                              </span>
-                            </button>
-                          )}
-                          </Can>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        )}
+                        </Can>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         ) : (
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredProducts.map((prod) => {
-              const promo = getActivePromotion(prod);
-              return (
-                <div
-                  key={prod.sku}
-                  onClick={() => { if (puedeGestionar) onEditStock(prod); }}
-                  className="bg-[#f8f9ff] hover:bg-white rounded-2xl p-4 border border-[#c9c4d3]/40 hover:border-[#42308f]/40 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-mono text-xs font-bold text-[#42308f] bg-[#eff4ff] px-2 py-0.5 rounded-lg border border-[#42308f]/20">
-                        {prod.sku}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        {promo && (
-                          <span
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-[#eff4ff] text-[#42308f]"
-                            title={`Promoción activa: ${promo.title}`}
-                          >
-                            <Tag className="w-2.5 h-2.5" />
-                            Promo
-                          </span>
-                        )}
-                        <span
-                          className="w-4 h-4 rounded-full shadow-2xs ring-1 ring-black/10 shrink-0"
-                          style={{ backgroundColor: prod.colorHex }}
-                          title={getProductColorDisplay(prod).tooltipText}
-                        />
-                        <Can role={ROLES_GESTION}>
-                        {onDeleteProduct && (
-                          <button
-                            id={`btn-eliminar-grid-${prod.sku}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProductToDelete(prod);
-                            }}
-                            className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-                            title="Eliminar prenda"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        </Can>
-                      </div>
-                    </div>
-
-                    <h4 className="font-heading font-bold text-sm text-[#0b1c30] group-hover:text-[#42308f]">
-                      {prod.name}
-                    </h4>
-                    <p className="text-xs text-[#5e5d69] line-clamp-2 mt-0.5 mb-3">
-                      {prod.description}
-                    </p>
-
-                    <div className="flex items-center gap-1.5 flex-wrap mb-3">
-                      <span className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-xs font-bold text-[#0b1c30]">
-                        Talle {prod.size}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-xs font-medium text-[#5e5d69]">
-                        {prod.season}
-                      </span>
-                      <span
-                        className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-xs font-medium text-[#5e5d69]"
-                        title={getProductColorDisplay(prod).tooltipText}
-                      >
-                        {getProductColorDisplay(prod).primary}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-gray-200/60 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-[#797583] block uppercase">Stock</span>
-                      <span
-                        className={`font-heading text-lg font-extrabold ${
-                          prod.stock === 0 ? 'text-[#ba1a1a]' : 'text-[#42308f]'
-                        }`}
-                      >
-                        {prod.stock} u.
-                      </span>
-                    </div>
+            {filteredProducts.map((prod) => (
+              <div key={prod.sku} onClick={() => { if (puedeGestionar) onEditStock(prod); }} className="bg-[#f8f9ff] hover:bg-white rounded-2xl p-4 border border-[#c9c4d3]/40 hover:border-[#42308f]/40 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-mono text-xs font-bold text-[#42308f] bg-[#eff4ff] px-2 py-0.5 rounded-lg border border-[#42308f]/20">{prod.sku}</span>
                     <div className="flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full shadow-2xs ring-1 ring-black/10 shrink-0" style={{ backgroundColor: prod.colorHex }} />
                       <Can role={ROLES_GESTION}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onQuickReplenish) {
-                            onQuickReplenish(prod);
-                          } else {
-                            onOpenCargarProducto(prod.category);
-                          }
-                        }}
-                        className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 bg-purple-50 text-[#42308f] hover:bg-[#42308f] hover:text-white transition-all shadow-2xs cursor-pointer"
-                        title="Reponer stock (+ unidades)"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Reponer</span>
-                      </button>
+                      {onDeleteProduct && (
+                        <button onClick={(e) => { e.stopPropagation(); setProductToDelete(prod); }} className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       </Can>
-                      {onOpenRegistrarVenta && (
-                        <button
-                          id={`btn-vender-grid-${prod.sku}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenRegistrarVenta(prod);
-                          }}
-                          disabled={prod.stock === 0}
-                          className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all ${
-                            prod.stock === 0
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white shadow-2xs'
-                          }`}
-                          title="Registrar venta y descontar stock"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Vender</span>
-                        </button>
-                      )}
-                      {onOpenReserva && (
-                        <button
-                          id={`btn-reservar-grid-${prod.sku}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenReserva(prod);
-                          }}
-                          disabled={prod.stock === 0}
-                          className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all ${
-                            prod.stock === 0
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : 'bg-purple-50 text-[#42308f] hover:bg-[#42308f] hover:text-white shadow-2xs'
-                          }`}
-                          title="Apartar / Reservar con seña"
-                        >
-                          <CalendarCheck className="w-3.5 h-3.5" />
-                          <span>Señar</span>
-                        </button>
-                      )}
-                      <div>{getStatusBadge(prod.status, prod.stock)}</div>
                     </div>
                   </div>
+                  <h4 className="font-heading font-bold text-sm text-[#0b1c30] group-hover:text-[#42308f]">{prod.name}</h4>
+                  <p className="text-xs text-[#5e5d69] line-clamp-2 mt-0.5 mb-3">{prod.description}</p>
                 </div>
-              );
-            })}
+                <div className="pt-3 border-t border-gray-200/60 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-[#797583] block uppercase">Stock</span>
+                    <span className={`font-heading text-lg font-extrabold ${prod.stock === 0 ? 'text-[#ba1a1a]' : 'text-[#42308f]'}`}>{prod.stock} u.</span>
+                  </div>
+                  <div>{getStatusBadge(prod.status, prod.stock)}</div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
+      {/* Modal para Eliminar Prenda Individual */}
       {productToDelete && (
         <ConfirmDeleteModal
           isOpen={Boolean(productToDelete)}
@@ -1180,8 +844,70 @@ const getCategoryIcon = (iconName: string, catName: string) => {
           itemName={`${productToDelete?.name} (${productToDelete?.sku})`}
           itemType="la prenda del inventario"
           confirmText="Sí, Eliminar Prenda"
-          itemDetail={`Categoría: ${productToDelete?.category} | Talle: ${productToDelete?.size} | Color: ${productToDelete?.colorName} | Stock actual: ${productToDelete?.stock} u.`}
+          itemDetail={`Categoría: ${productToDelete?.category} | Talle: ${productToDelete?.size} | Stock actual: ${productToDelete?.stock} u.`}
         />
+      )}
+
+      {/* Modal Reutilizado para Eliminar Colección Completa */}
+      {categoryToDelete && (
+        <ConfirmDeleteModal
+          isOpen={Boolean(categoryToDelete)}
+          onClose={() => setCategoryToDelete(null)}
+          onConfirm={() => {
+            if (onDeleteCategory && categoryToDelete) {
+              onDeleteCategory(categoryToDelete);
+              setCategoryToDelete(null);
+              onNavigateToResumen(); 
+            }
+          }}
+          title="Eliminar Colección Completa"
+          itemName={categoryToDelete}
+          itemType="la colección"
+          confirmText="Sí, Eliminar Colección y sus Prendas"
+          itemDetail={`¡ATENCIÓN PELIGRO! Se eliminarán permanentemente las ${filteredProducts.length} prendas que pertenecen a esta colección.`}
+        />
+      )}
+
+      {/* Mini-Modal para Renombrar Colección */}
+      {categoryToRename && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm card-shadow border border-[#c9c4d3]/40 animate-in fade-in zoom-in-95">
+            <h3 className="font-heading font-bold text-lg text-[#0b1c30] mb-2">Renombrar Colección</h3>
+            <p className="text-xs text-[#5e5d69] mb-4">
+              Ingresá el nuevo nombre para la colección <span className="font-bold text-[#0b1c30]">"{categoryToRename}"</span>. 
+              Esto actualizará automáticamente todas sus prendas asociadas.
+            </p>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              className="w-full text-sm font-semibold text-[#42308f] px-3.5 py-2.5 bg-[#f8f9ff] border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none mb-5"
+              autoFocus
+              placeholder="Nuevo nombre..."
+            />
+            <div className="flex justify-end gap-2">
+              <button 
+                onClick={() => setCategoryToRename(null)} 
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (newCategoryName.trim() && newCategoryName.trim() !== categoryToRename && onRenameCategory) {
+                    onRenameCategory(categoryToRename, newCategoryName.trim());
+                    setCategoryToRename(null);
+                    onNavigateToCategory(newCategoryName.trim());
+                  }
+                }}
+                disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename}
+                className="px-5 py-2 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
+              >
+                Guardar Nombre
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

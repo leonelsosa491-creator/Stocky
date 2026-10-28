@@ -12,7 +12,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { AppUser, UserRole } from '../types';
-import { loadStoreSettings, saveStoreSettings } from '../utils/storage';
+import { DEFAULT_SETTINGS, loadStoreSettings, saveStoreSettings } from '../utils/storage';
 import { Can } from './auth/Can';
 import { InvitacionesPanel } from './InvitacionesPanel';
 import { EquipoPanel } from './EquipoPanel';
@@ -27,7 +27,6 @@ interface ConfiguracionViewProps {
   onAddUser: (user: Omit<AppUser, 'id'>) => void;
   onDeleteUser: (userId: string) => void;
   onClearAllTestData?: () => void;
-  onRestoreTestData?: () => void;
 }
 
 const createAvatarSvg = (color1: string, color2: string) => {
@@ -45,9 +44,8 @@ const PRESET_AVATARS = [
 
 export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   onClearAllTestData,
-  onRestoreTestData,
 }) => {
-  const { user, role } = useAuth();
+  const { user, role, refreshUser } = useAuth();
   
   const [saved, setSaved] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -60,57 +58,123 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || PRESET_AVATARS[0]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState('');
+
+  // Recorta la foto al centro y la achica a 256x256 antes de subirla
+const resizeImageToBlob = (file: File, size = 256): Promise<Blob> =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      URL.revokeObjectURL(url);
+      if (!ctx) {
+        reject(new Error('No se pudo procesar la imagen.'));
+        return;
+      }
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('No se pudo procesar la imagen.'))),
+        'image/jpeg',
+        0.85
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No se pudo leer la imagen. Probá con un JPG o PNG.'));
+    };
+    img.src = url;
+  });
+
+// Si la foto vieja estaba en nuestro Storage, devuelve su ruta para poder borrarla
+const rutaAvatarEnStorage = (url?: string | null): string | null => {
+  const marca = '/storage/v1/object/public/avatars/';
+  const i = url ? url.indexOf(marca) : -1;
+  return url && i >= 0 ? decodeURIComponent(url.slice(i + marca.length)) : null;
+};
 
   const [initialSettings] = useState(() => loadStoreSettings());
-  const [storeName, setStoreName] = useState(initialSettings.storeName);
+  const initialStoreName =
+    initialSettings.storeName === DEFAULT_SETTINGS.storeName
+      ? user?.businessName?.trim() || initialSettings.storeName
+      : initialSettings.storeName;
+  const [storeName, setStoreName] = useState(initialStoreName);
   const [address, setAddress] = useState(initialSettings.address);
   const [minAlertStock, setMinAlertStock] = useState(initialSettings.minAlertStock);
   const [emailAlerts, setEmailAlerts] = useState(initialSettings.emailAlerts);
 
   const [isConfirmClearModalOpen, setIsConfirmClearModalOpen] = useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (reader.result) {
-          setAvatarUrl(reader.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    e.target.value = ''; // permite volver a elegir el mismo archivo
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setProfileError('El archivo tiene que ser una imagen.');
+      return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      setProfileError('La imagen pesa demasiado (máximo 10 MB).');
+      return;
+    }
+    setProfileError('');
+    setAvatarFile(file);
+    setAvatarUrl(URL.createObjectURL(file)); // vista previa
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    setIsSavingProfile(true);
+    setProfileError('');
+
     try {
-      const fullName = `${firstName} ${lastName}`.trim();
+      let finalAvatar = avatarUrl;
+      const previousAvatar = user.avatar;
 
-      // Enviamos la actualización real a los metadatos de Supabase
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          name: fullName,
-          avatar: avatarUrl
-        }
+      // Si eligió una foto nueva: se achica y se sube a Storage
+      if (avatarFile) {
+        const blob = await resizeImageToBlob(avatarFile);
+        const path = `${user.id}/avatar-${Date.now()}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600' });
+        if (uploadError) throw uploadError;
+        finalAvatar = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+      }
+
+      // Nombre, apellido y foto se guardan en "perfiles"
+      const { error } = await supabase.rpc('actualizar_mi_perfil', {
+        p_nombre: firstName.trim(),
+        p_apellido: lastName.trim(),
+        p_avatar_url: finalAvatar,
       });
-
       if (error) throw error;
 
-      setProfileSaved(true);
-      
-      // Recargamos la página brevemente para que el Header y el Sidebar 
-      // vuelvan a leer los datos frescos desde Supabase
-      setTimeout(() => {
-        setProfileSaved(false);
-        window.location.reload();
-      }, 1200);
+      // Borra la foto anterior si estaba en Storage y ya no se usa
+      const oldPath = rutaAvatarEnStorage(previousAvatar);
+      if (oldPath && previousAvatar !== finalAvatar) {
+        await supabase.storage.from('avatars').remove([oldPath]);
+      }
 
-    } catch (error) {
-      console.error('Error al guardar en Supabase:', error);
-      alert('Hubo un problema de conexión con Supabase al guardar tu perfil.');
+      await refreshUser(); // el Header y el resto se actualizan solos, sin recargar
+      setAvatarFile(null);
+      setAvatarUrl(finalAvatar);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch (err: any) {
+      console.error('Error al guardar el perfil:', err);
+      setProfileError(err?.message || 'No se pudo guardar tu perfil. Probá de nuevo.');
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -178,7 +242,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
 
               <button
                 type="button"
-                onClick={() => setAvatarUrl(PRESET_AVATARS[0])}
+                onClick={() => { setAvatarFile(null); setAvatarUrl(PRESET_AVATARS[0]); }}
                 className="text-[11px] font-bold text-[#797583] hover:text-[#42308f] transition-colors cursor-pointer"
               >
                 Restaurar avatar por defecto
@@ -224,7 +288,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setAvatarUrl(url)}
+                    onClick={() => { setAvatarFile(null); setAvatarUrl(url); }}
                     className={`w-10 h-10 rounded-full overflow-hidden transition-all cursor-pointer ring-2 ${
                       avatarUrl === url ? 'ring-[#42308f] scale-110 shadow-md' : 'ring-transparent opacity-70 hover:opacity-100'
                     }`}
@@ -235,18 +299,24 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-3">
+                        <div className="flex items-center gap-3 pt-3 flex-wrap">
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                disabled={isSavingProfile}
+                className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-bold rounded-full hover:bg-[#5a49a8] transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {profileSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                <span>{profileSaved ? 'Perfil Actualizado' : 'Guardar Perfil'}</span>
+                <span>
+                  {isSavingProfile ? 'Guardando...' : profileSaved ? 'Perfil Actualizado' : 'Guardar Perfil'}
+                </span>
               </button>
               {profileSaved && (
                 <span className="text-xs font-bold text-emerald-600 animate-in fade-in">
-                  ¡Datos guardados en Supabase!
+                  ¡Perfil guardado!
                 </span>
+              )}
+              {profileError && (
+                <span className="text-xs font-bold text-rose-600">{profileError}</span>
               )}
             </div>
           </div>
@@ -316,8 +386,8 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               <input
                 type="number"
                 min="1"
-                value={minAlertStock}
-                onChange={(e) => setMinAlertStock(Number(e.target.value))}
+                value={minAlertStock === 0 ? '' : minAlertStock}
+                onChange={(e) => setMinAlertStock(e.target.value === '' ? 0 : Number(e.target.value))}
                 className="w-full text-xs px-3.5 py-2.5 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none font-bold text-[#42308f]"
               />
               <p className="text-[11px] text-gray-400 mt-1">
@@ -421,18 +491,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              {onRestoreTestData && (
-                <button
-                  type="button"
-                  id="btn-restaurar-datos-demo"
-                  onClick={onRestoreTestData}
-                  className="px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-full border border-gray-200 transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                  title="Restaurar datos demo de prueba originales"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-gray-500" />
-                  <span>Restaurar Demo</span>
-                </button>
-              )}
+          
 
               {onClearAllTestData && (
                 <button

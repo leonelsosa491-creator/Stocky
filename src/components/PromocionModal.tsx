@@ -336,8 +336,9 @@ export const PromocionModal: React.FC<PromocionModalProps> = ({
                   type="number"
                   min="1"
                   max={discountType === 'porcentaje' ? 100 : 500000}
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(Number(e.target.value))}
+                  step="0.01"
+                  value={discountValue === 0 ? '' : discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value === '' ? 0 : Number(e.target.value))}
                   disabled={discountType === 'dos_por_uno'}
                   className="w-full text-xs font-bold px-3.5 py-2.5 bg-[#f8f9ff] border border-[#c9c4d3]/50 rounded-xl focus:border-[#42308f] focus:outline-none disabled:opacity-60"
                   required
@@ -615,7 +616,7 @@ export const PromocionModal: React.FC<PromocionModalProps> = ({
               <input
                 type="number"
                 min="0"
-                step="500"
+                step="0.01"
                 value={minPurchase}
                 onChange={(e) => setMinPurchase(e.target.value)}
                 placeholder="Sin mínimo (dejar vacío o 0)"

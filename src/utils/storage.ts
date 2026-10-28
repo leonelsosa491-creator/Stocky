@@ -50,7 +50,7 @@ export interface StoreSettings {
 }
 
 export const DEFAULT_SETTINGS: StoreSettings = {
-  storeName: "Aries - Melina's Indumentaria",
+  storeName: 'Stocky',
   address: 'Av. Santa Fe 1840, Buenos Aires',
   minAlertStock: 15,
   emailAlerts: true,
@@ -202,7 +202,10 @@ export function loadInitialAppData(): AppStoredData {
 
 export function loadStoreSettings(): StoreSettings {
   const raw = safeGet(STORAGE_KEYS.SETTINGS);
-  return safeParse<StoreSettings>(raw, DEFAULT_SETTINGS);
+  const settings = safeParse<StoreSettings>(raw, DEFAULT_SETTINGS);
+  return settings.storeName === "Aries - Melina's Indumentaria"
+    ? { ...settings, storeName: DEFAULT_SETTINGS.storeName }
+    : settings;
 }
 
 export function saveStoreSettings(settings: StoreSettings): void {

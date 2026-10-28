@@ -27,6 +27,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   requestPasswordReset: (identifier: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
+
 }
 
 const CUENTA_DESACTIVADA = 'Tu cuenta fue desactivada. Contactá a la administración de tu boutique.';
@@ -61,6 +63,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const boutique = Array.isArray(perfil?.boutiques) ? perfil?.boutiques[0] : perfil?.boutiques;
     const nombreCompleto = [perfil?.nombre, perfil?.apellido].filter(Boolean).join(' ');
+        // Foto de perfil (consulta aparte: si la columna todavía no existe, no rompe el login)
+    const { data: avatarRow } = await supabase
+      .from('perfiles')
+      .select('avatar_url')
+      .eq('id', sbUser.id)
+      .maybeSingle();
 
     return {
       id: sbUser.id,
@@ -71,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       boutiqueId: perfil?.boutique_id ?? undefined,
       businessName: boutique?.nombre ?? undefined,
       status: 'activo',
+      avatar: avatarRow?.avatar_url || undefined,
     };
   };
 
@@ -210,9 +219,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updatePassword = async (newPassword: string) => {
+    const updatePassword = async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
+  };
+
+  // Vuelve a leer el perfil desde Supabase (después de editar nombre o foto)
+  const refreshUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) {
+      const u = await cargarUsuario(data.user);
+      setUser(u);
+    }
   };
 
   const logout = async () => {
@@ -233,6 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         requestPasswordReset,
         updatePassword,
+        refreshUser,
       }}
     >
       {children}

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { ProductItem, Promotion, StockMovement } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useTour } from '../context/TourContext';
 
 interface CartItem {
   product: ProductItem;
@@ -72,6 +73,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
 
   // Quién está vendiendo: la persona logueada y su boutique
   const { user, role } = useAuth();
+  const { notifyTour } = useTour();
   const sellerName = user?.name?.trim() || 'Vendedor/a';
   const businessName = user?.businessName?.trim() || 'Stocky';
   const sellerRoleLabel =
@@ -150,6 +152,11 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
       }
     }
   }, [isOpen, initialProduct]);
+
+  useEffect(() => {
+    if (!isOpen || completedSale) return;
+    notifyTour(cart.length > 0 ? 'venta-carrito-listo' : 'venta-carrito-vacio');
+  }, [isOpen, cart.length, completedSale, notifyTour]);
 
   // Extract unique categories for quick tabs
   const categoryTabs = useMemo(() => {
@@ -611,7 +618,7 @@ export const RegistrarVentaModal: React.FC<RegistrarVentaModalProps> = ({
           /* PANTALLA PRINCIPAL DE VENTA */
           <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 overflow-y-auto max-h-[calc(92vh-80px)]">
             {/* COLUMNA IZQUIERDA: BÚSQUEDA Y SELECCIÓN DE PRENDAS (7 columnas) */}
-            <div className="lg:col-span-7 p-5 sm:p-6 space-y-4">
+            <div id="tour-venta-lista" className="lg:col-span-7 p-5 sm:p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-heading text-sm font-bold text-[#0b1c30]">

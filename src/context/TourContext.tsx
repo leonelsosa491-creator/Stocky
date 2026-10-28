@@ -5,7 +5,14 @@ import type { EventData, Step, TooltipRenderProps } from 'react-joyride';
 import { Sparkles, X } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
-export type TourEvent = 'crear-categoria-abierto' | 'crear-categoria-cerrado' | 'categoria-creada';
+export type TourEvent =
+  | 'crear-categoria-abierto'
+  | 'crear-categoria-cerrado'
+  | 'categoria-creada'
+  | 'categoria-creada-con-prenda'
+  | 'cargar-prenda-abierto'
+  | 'cargar-prenda-cerrado'
+  | 'prenda-cargada';
 
 interface TourContextType {
   isTourRunning: boolean;
@@ -25,6 +32,8 @@ interface TourStepData {
 const TOUR_STORAGE_PREFIX = 'stocky_tutorial_visto_';
 const ROLES_GESTION = ['developer', 'admin'];
 const CATEGORY_MODAL_STEPS = ['categoria-datos', 'categoria-guardar'];
+const PRENDA_MODAL_STEPS = ['prenda-datos', 'prenda-guardar'];
+const INTERACTIVE_STEPS = ['crear-categoria', ...CATEGORY_MODAL_STEPS, 'cargar-prenda', ...PRENDA_MODAL_STEPS];
 
 const storageKey = (userId: string) => `${TOUR_STORAGE_PREFIX}${userId}`;
 
@@ -130,7 +139,7 @@ const buildSteps = (canManage: boolean): Step[] => {
           placement: 'top',
           title: 'Guardá tu categoría',
           content:
-            'Si querés, cargá ya tu primera prenda (o destildá la opción para hacerlo después). Después tocá "Crear Categoría".',
+            'Podés cargar tu primera prenda acá mismo, o destildar la opción y te mostramos cómo hacerlo desde el Stock. Después tocá "Crear Categoría".',
           buttons: ['skip'],
           spotlightRadius: 20,
         },
@@ -142,7 +151,59 @@ const buildSteps = (canManage: boolean): Step[] => {
           placement: 'center',
           title: '¡Categoría creada!',
           content:
-            'Ya podés verla en el Stock Físico. Desde ahí vas a poder cargar prendas, reponer stock, renombrarla o eliminarla.',
+            'Ya la tenés en el Stock Físico. Ahora vamos a cargar tu primera prenda en esta categoría.',
+          buttons: ['skip', 'primary'],
+        },
+      ),
+      step(
+        { id: 'cargar-prenda', waitForAction: true, hint: 'Hacé clic en "+ Prenda Nueva" para continuar' },
+        {
+          target: '#btn-prenda-nueva',
+          placement: 'bottom',
+          title: 'Cargá una prenda',
+          content: 'Cada prenda es un modelo con su color, talle, cantidad y precio. Hacé clic en "+ Prenda Nueva".',
+          buttons: ['skip'],
+          spotlightRadius: 999,
+          spotlightPadding: 6,
+        },
+      ),
+      step(
+        {
+          id: 'prenda-datos',
+          requireInputId: 'tour-prenda-nombre',
+          requireInputMessage: 'Primero escribí el nombre de la prenda',
+        },
+        {
+          target: '#tour-prenda-nombre',
+          spotlightTarget: '#tour-prenda-panel',
+          placement: 'right',
+          title: 'Completá los datos de la prenda',
+          content:
+            'Escribí el nombre del modelo (ej. "Vestido Lino"), elegí la categoría y el color, y más abajo el talle, la cantidad y el precio. Cuando termines, tocá Siguiente.',
+          buttons: ['skip', 'primary'],
+          spotlightRadius: 20,
+        },
+      ),
+      step(
+        { id: 'prenda-guardar', waitForAction: true, hint: 'Tocá "Guardar y Cargar al Stock"' },
+        {
+          target: '#btn-guardar-prenda',
+          spotlightTarget: '#tour-prenda-panel',
+          placement: 'top',
+          title: 'Guardá la prenda',
+          content: 'Revisá los datos y tocá "Guardar y Cargar al Stock" para sumarla a tu inventario.',
+          buttons: ['skip'],
+          spotlightRadius: 20,
+        },
+      ),
+      step(
+        { id: 'prenda-cargada' },
+        {
+          target: 'body',
+          placement: 'center',
+          title: '¡Prenda cargada!',
+          content:
+            'Ya está en tu inventario. Desde el Stock Físico podés reponer unidades, editarla o reservarla para una clienta.',
           buttons: ['skip', 'primary'],
         },
       ),
@@ -345,6 +406,14 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
         goTo(indexOf('crear-categoria'));
       } else if (event === 'categoria-creada' && currentId && CATEGORY_MODAL_STEPS.includes(currentId)) {
         goTo(indexOf('categoria-creada'));
+      } else if (event === 'categoria-creada-con-prenda' && currentId && CATEGORY_MODAL_STEPS.includes(currentId)) {
+        goTo(indexOf('prenda-cargada'));
+      } else if (event === 'cargar-prenda-abierto' && currentId === 'cargar-prenda') {
+        goTo(indexOf('prenda-datos'));
+      } else if (event === 'cargar-prenda-cerrado' && currentId && PRENDA_MODAL_STEPS.includes(currentId)) {
+        goTo(indexOf('cargar-prenda'));
+      } else if (event === 'prenda-cargada' && currentId && PRENDA_MODAL_STEPS.includes(currentId)) {
+        goTo(indexOf('prenda-cargada'));
       }
     },
     [run, steps, goTo, indexOf],
@@ -371,7 +440,7 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (type === EVENTS.TARGET_NOT_FOUND) {
         const currentId = steps[index]?.id;
-        if (currentId === 'crear-categoria' || (currentId && CATEGORY_MODAL_STEPS.includes(currentId))) {
+        if (currentId && INTERACTIVE_STEPS.includes(currentId)) {
           const ventaIndex = indexOf('registrar-venta');
           goTo(ventaIndex >= 0 ? ventaIndex : index + 1);
         } else if (index + 1 >= steps.length) {

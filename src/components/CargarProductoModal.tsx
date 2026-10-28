@@ -298,7 +298,7 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-xl w-full card-shadow border border-[#c9c4d3]/40 p-5 sm:p-7 animate-in fade-in zoom-in-95 duration-200 max-h-[94vh] flex flex-col">
+      <div id="tour-prenda-panel" className="bg-white rounded-3xl max-w-xl w-full card-shadow border border-[#c9c4d3]/40 p-5 sm:p-7 animate-in fade-in zoom-in-95 duration-200 max-h-[94vh] flex flex-col">
         <div className="flex justify-between items-start pb-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="font-heading text-xl font-extrabold text-[#0b1c30] tracking-tight flex items-center gap-2">
@@ -448,10 +448,10 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
           )}
 
           {(productToEdit || activeTab === 'nuevo') && (
-            <form onSubmit={handleNewProductSubmit} className="space-y-4">
+            <form id="tour-prenda-form" onSubmit={handleNewProductSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Nombre del Modelo / Prenda *</label>
-                <input type="text" required placeholder="Ej. Buzo Oversize Capucha, Remera Boxy..." value={name} onChange={(e) => handleNameChange(e.target.value)} className="w-full text-sm font-semibold px-3.5 py-2.5 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none" />
+                <input id="tour-prenda-nombre" type="text" required placeholder="Ej. Buzo Oversize Capucha, Remera Boxy..." value={name} onChange={(e) => handleNameChange(e.target.value)} className="w-full text-sm font-semibold px-3.5 py-2.5 border border-gray-200 rounded-xl focus:border-[#42308f] focus:outline-none" />
               </div>
 
               <div>
@@ -632,7 +632,7 @@ export const CargarProductoModal: React.FC<CargarProductoModalProps> = ({
 
               <div className="pt-3 flex justify-end items-center gap-2 border-t border-gray-100">
                 <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-full cursor-pointer">Cancelar</button>
-                <button type="submit" className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-extrabold rounded-full hover:bg-[#5a49a8] shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer">
+                <button id="btn-guardar-prenda" type="submit" className="px-6 py-2.5 bg-[#42308f] text-white text-xs font-extrabold rounded-full hover:bg-[#5a49a8] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer">
                   <Save className="w-3.5 h-3.5" />
                   <span>{productToEdit ? 'Guardar Cambios' : 'Guardar y Cargar al Stock'}</span>
                 </button>

@@ -352,6 +352,7 @@ export default function App() {
     setProductToReplenish(itemToReplenish || null);
     setCargarModalInitialMode(initialMode);
     setIsCargarProductoOpen(true);
+    if (initialMode === 'nuevo' && !productToEdit) notifyTour('cargar-prenda-abierto');
   };
 
   const handleOpenCrearStock = () => {
@@ -471,7 +472,7 @@ export default function App() {
   };
 
   const handleCreateStock = async (newCat: CategorySummary, initialProduct?: ProductItem) => {
-    notifyTour('categoria-creada');
+    notifyTour(initialProduct ? 'categoria-creada-con-prenda' : 'categoria-creada');
     if (boutiqueId) {
       await supabase.from('categorias').upsert({
         boutique_id: boutiqueId,
@@ -525,6 +526,7 @@ export default function App() {
   };
 
   const handleSaveCargarProducto = async (prod: ProductItem) => {
+    if (!prod.sku) notifyTour('prenda-cargada');
     const isNew = !prod.sku;
     const savedProd = await syncProductToSupabase(prod);
 
@@ -557,6 +559,7 @@ export default function App() {
   };
 
   const handleSaveBatchProducts = async (batch: ProductItem[]) => {
+    notifyTour('prenda-cargada');
     const savedBatch = await syncBatchProductsToSupabase(batch);
 
     if (savedBatch.length > 0) {
@@ -914,7 +917,7 @@ export default function App() {
                 </div>
                 <ModalPresence show={isNuevoIngresoOpen}><NuevoIngresoModal isOpen={isNuevoIngresoOpen} onClose={() => setIsNuevoIngresoOpen(false)} products={products} categories={categories.map((c) => c.name)} onAddStock={handleAddStock} /></ModalPresence>
                 <ModalPresence show={isCrearStockOpen}><CrearStockModal isOpen={isCrearStockOpen} onClose={handleCloseCrearStock} existingCategoryNames={categories.map((c) => c.name)} onCreateStock={handleCreateStock} /></ModalPresence>
-                <ModalPresence show={isCargarProductoOpen}><CargarProductoModal isOpen={isCargarProductoOpen} onClose={() => { setIsCargarProductoOpen(false); setCargarProductToEdit(null); setProductToReplenish(null); }} products={products} categories={categories.map((c) => c.name)} defaultCategory={categoryForCargar || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos')} onSaveProduct={handleSaveCargarProducto} onSaveBatchProducts={handleSaveBatchProducts} onReplenishProduct={handleReplenishStock} productToEdit={cargarProductToEdit} productToReplenish={productToReplenish} initialMode={cargarModalInitialMode} onCreateCategory={handleCreateCategoryInline} /></ModalPresence>
+                <ModalPresence show={isCargarProductoOpen}><CargarProductoModal isOpen={isCargarProductoOpen} onClose={() => { setIsCargarProductoOpen(false); setCargarProductToEdit(null); setProductToReplenish(null); notifyTour('cargar-prenda-cerrado'); }} products={products} categories={categories.map((c) => c.name)} defaultCategory={categoryForCargar || (selectedCategory !== 'Todas' ? selectedCategory : 'Buzos')} onSaveProduct={handleSaveCargarProducto} onSaveBatchProducts={handleSaveBatchProducts} onReplenishProduct={handleReplenishStock} productToEdit={cargarProductToEdit} productToReplenish={productToReplenish} initialMode={cargarModalInitialMode} onCreateCategory={handleCreateCategoryInline} /></ModalPresence>
                 <ModalPresence show={isRegistrarVentaOpen}><RegistrarVentaModal isOpen={isRegistrarVentaOpen} onClose={() => { setIsRegistrarVentaOpen(false); setProductForVenta(null); }} products={products} promotions={promotions} initialProduct={productForVenta} onConfirmSale={handleConfirmSale} /></ModalPresence>
                 <ModalPresence show={Boolean(editingProduct)}><EditarStockModal isOpen={Boolean(editingProduct)} onClose={() => setEditingProduct(null)} product={editingProduct} onSaveProduct={handleSaveProduct} /></ModalPresence>
                 <ModalPresence show={isPromotionModalOpen}><PromocionModal isOpen={isPromotionModalOpen} onClose={() => { setIsPromotionModalOpen(false); setEditingPromotion(null); }} onSave={handleSavePromotion} promotionToEdit={editingPromotion} products={products} /></ModalPresence>

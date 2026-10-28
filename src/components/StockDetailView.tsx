@@ -360,6 +360,7 @@ export const StockDetailView: React.FC<StockDetailViewProps> = ({
             </button>
 
             <button
+              id="btn-prenda-nueva"
               onClick={() => {
                 onOpenCargarProducto(selectedCategory !== 'Todas' ? selectedCategory : undefined, null, 'nuevo');
               }}

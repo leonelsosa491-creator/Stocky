@@ -139,7 +139,7 @@ const buildSteps = (canManage: boolean): Step[] => {
           placement: 'top',
           title: 'Guardá tu categoría',
           content:
-            'Podés cargar tu primera prenda acá mismo, o destildar la opción y te mostramos cómo hacerlo desde el Stock. Después tocá "Crear Categoría".',
+            'Tocá "Crear Categoría" para guardarla. En el próximo paso te mostramos cómo cargar tu primera prenda.',
           buttons: ['skip'],
           spotlightRadius: 20,
         },

@@ -78,7 +78,7 @@ export const CrearStockModal: React.FC<CrearStockModalProps> = ({
   const [selectedIcon, setSelectedIcon] = useState('remera');
   const [nameError, setNameError] = useState('');
 
-  const [addInitialProduct, setAddInitialProduct] = useState(true);
+  const [addInitialProduct, setAddInitialProduct] = useState(false);
   const [prodName, setProdName] = useState('');
   const [prodSize, setProdSize] = useState('M');
   const [prodSeason, setProdSeason] = useState('Invierno');
